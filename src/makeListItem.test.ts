@@ -7,7 +7,7 @@ const data = [
       scope: "scope",
       description: "description",
     },
-    output: `* **scope** description`
+    output: `* **scope**: description`
   },
   {
     description: "no scope conventional commit",
