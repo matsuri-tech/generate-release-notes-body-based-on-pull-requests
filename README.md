@@ -1,116 +1,91 @@
-# Create a JavaScript Action
 
-<p align="center">
-  <a href="https://github.com/actions/javascript-action/actions"><img alt="javscript-action status" src="https://github.com/actions/javascript-action/workflows/units-test/badge.svg"></a>
-</p>
+# Generate Release note's body based on pull requests
 
-Use this template to bootstrap the creation of a JavaScript action.:rocket:
+Release NoteのBodyをPull requestから自動生成するGithub Action
 
-This template includes tests, linting, a validation workflow, publishing, and versioning guidance.
+## 使い方
 
-If you are new, there's also a simpler introduction.  See the [Hello World JavaScript Action](https://github.com/actions/hello-world-javascript-action)
+```yml
+# deploy.yml
+name: deploy
 
-## Create an action from this template
-
-Click the `Use this Template` and provide the new repo details for your action
-
-## Code in Main
-
-Install the dependencies
-
-```bash
-npm install
+on: 
+  pull_request:
+    # 走らせるブランチを制限したい場合は、ここに `- master`のように記入する。
+    # ただしRELEASE_PREFIXがマッチしない場合はすぐに終了するので、あまり制限する意味はありません。
+jobs:
+  generate-release-notes-body:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: matsuri-tech/generate-release-notes-body-based-on-pull-requests@main
+      with:
+        # 必須。
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 任意。
+        # デフォルト：'Release Note'
+        # この文字列から始まるタイトルでのみ生成する
+        RELEASE_PREFIX: 'Release Note'
 ```
 
-Run the tests :heavy_check_mark:
+## やること（処理の流れ）
 
-```bash
-$ npm test
+1. 指定された形式のRelease Noteでのみ処理を走らせる。
+2. 以前投げられたRelease Noteまで、マージされたPRのタイトルを集める。
+3. 集まったPRのタイトルをconventional commitとしてパースする。
+4. パースされたタイトルを元にRelease Note用のBodyを生成する。
+5. 既にRelease NoteのBodyに何か記入されている場合、その下に生成されたBodyを挿入する。
+6. 再度生成した場合は、以前生成されたものを置換する。
 
- PASS  ./index.test.js
-  ✓ throws invalid number (3ms)
-  ✓ wait 500 ms (504ms)
-  ✓ test runs (95ms)
-...
+### 他にやること
+
+- 集まったPRのBodyから`BREAKING CHANGE`からはじめる行を収集し、Release NoteのBodyにBREAKING CHANGESとしてまとめる。
+- `chore` 以外のOthersにまとめられるprefixを使用したタイトルで、スコープが指定されていない場合、prefix名をスコープとして利用する。
+
+
+### conventional commitについて
+
+以下のような形式のコミットのこと。
+
+```
+prefix(scope): description
 ```
 
-## Change action.yml
+prefixで作業内容分類、scopeで作業箇所の分類、descriptionで作業内容の説明を表す。
 
-The action.yml defines the inputs and output for your action.
+詳細はconventional commitで検索すること。
 
-Update the action.yml with your name, description, inputs and outputs for your action.
+## やっていないこと
 
-See the [documentation](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
+- PRのタイトルに使用できるPrefixの設定
 
-## Change the Code
-
-Most toolkit and CI/CD operations involve async operations so the action is run in an async function.
-
-```javascript
-const core = require('@actions/core');
-...
-
-async function run() {
-  try {
-      ...
-  }
-  catch (error) {
-    core.setFailed(error.message);
-  }
-}
-
-run()
+現在サポートしているPrefixを以下の通り
+```
+feat
+fix
+build
+ci
+perf
+test
+refactor
+docs
 ```
 
-See the [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages) for the various packages.
+これ以外の指定は無視されます。
 
-## Package for distribution
+- PrefixとBody生成時のタイトルマッピング
 
-GitHub Actions will run the entry point from the action.yml. Packaging assembles the code into one file that can be checked in to Git, enabling fast and reliable execution and preventing the need to check in node_modules.
+対応付けはそれぞれ以下のようになっています
 
-Actions are run from GitHub repos.  Packaging the action will create a packaged action in the dist folder.
+| Prefix | Heading |
+| - | - |
+| feat | Features |
+| fix | Fixtures |
+| それ以外 | Others |
 
-Run prepare
 
-```bash
-npm run prepare
-```
+## やらないこと
 
-Since the packaged index.js is run from the dist folder.
-
-```bash
-git add dist
-```
-
-## Create a release branch
-
-Users shouldn't consume the action from master since that would be latest code and actions can break compatibility between major versions.
-
-Checkin to the v1 release branch
-
-```bash
-git checkout -b v1
-git commit -a -m "v1 release"
-```
-
-```bash
-git push origin v1
-```
-
-Note: We recommend using the `--license` option for ncc, which will create a license file for all of the production node modules used in your project.
-
-Your action is now published! :rocket:
-
-See the [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-
-## Usage
-
-You can now consume the action by referencing the v1 branch
-
-```yaml
-uses: actions/javascript-action@v1
-with:
-  milliseconds: 1000
-```
-
-See the [actions tab](https://github.com/actions/javascript-action/actions) for runs of this action! :rocket:
+- CHANGELOGの生成
+- tagの添付
+- タイトル形式のバリデーション
