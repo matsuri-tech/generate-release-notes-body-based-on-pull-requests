@@ -5991,7 +5991,7 @@ exports.makeBody = makeBody;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.makeListItem = void 0;
 const makeListItem = ({ scope, description, }) => {
-    return scope ? `* **${scope}** ${description}` : `* ${description}`;
+    return scope ? `* **${scope}**: ${description}` : `* ${description}`;
 };
 exports.makeListItem = makeListItem;
 

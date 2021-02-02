@@ -19,7 +19,7 @@ const data: [Sections, string][] = [
       START_COMMENT_OUT,
       "",
       "## Heading",
-      "* **scope** description",
+      "* **scope**: description",
       "",
       END_COMMENT_OUT
     ].join("\n"),
@@ -49,10 +49,10 @@ const data: [Sections, string][] = [
       START_COMMENT_OUT,
       "",
       "## Heading1",
-      "* **scope1** description1",
+      "* **scope1**: description1",
       "",
       "## Heading2",
-      "* **scope2** description2",
+      "* **scope2**: description2",
       "",
       END_COMMENT_OUT
     ].join("\n"),

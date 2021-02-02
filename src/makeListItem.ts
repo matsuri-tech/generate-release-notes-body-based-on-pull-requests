@@ -5,5 +5,5 @@ export const makeListItem = ({
   scope?: string;
   description: string;
 }) => {
-  return scope ? `* **${scope}** ${description}` : `* ${description}`;
+  return scope ? `* **${scope}**: ${description}` : `* ${description}`;
 };
