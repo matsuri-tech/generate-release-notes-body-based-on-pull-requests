@@ -12,7 +12,7 @@ name: deploy
 on: 
   pull_request:
     # 走らせるブランチを制限したい場合は、ここに `- master`のように記入する。
-    # ただしRELEASE_PREFIXがマッチしない場合はすぐに終了するので、あまり制限する意味はありません。
+    # ただしRELEASE_PREFIXがマッチしない場合はすぐに終了するので、あまり制限する意味はない。
 jobs:
   generate-release-notes-body:
     runs-on: ubuntu-latest
