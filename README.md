@@ -59,7 +59,7 @@ prefixで作業内容分類、scopeで作業箇所の分類、descriptionで作�
 
 - PRのタイトルに使用できるPrefixの設定
 
-現在サポートしているPrefixを以下の通り
+現在サポートしているPrefixは以下の通り
 ```
 feat
 fix
