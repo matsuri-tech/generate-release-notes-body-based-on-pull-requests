@@ -5872,6 +5872,7 @@ const github = __importStar(__nccwpck_require__(5438));
 const parseTitle_1 = __nccwpck_require__(3747);
 const makeBody_1 = __nccwpck_require__(4550);
 const mergeBody_1 = __nccwpck_require__(1073);
+const isValidTitle_1 = __nccwpck_require__(9555);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -5883,6 +5884,10 @@ function run() {
             }
             const pull = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
+            if (isValidTitle_1.isValidTitle(pull.data.title) === false) {
+                core.warning("The title of this PR does not follow the conventional format.");
+                return;
+            }
             if (RELEASE_PREFIX !== parseTitle_1.parseTitle(pull.data.title).prefix) {
                 core.warning("This title prefix does not match the specified release prefix.");
                 return;
@@ -5908,6 +5913,8 @@ function run() {
             };
             pulls.data.some((pull) => {
                 var _a;
+                if (isValidTitle_1.isValidTitle(pull.title) === false)
+                    return false;
                 const { prefix, scope, description } = parseTitle_1.parseTitle(pull.title);
                 // Use the pull requests up to the latest release pull request.
                 if (RELEASE_PREFIX === prefix) {
@@ -5916,8 +5923,8 @@ function run() {
                 // breaking changes
                 const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
                 if (breakings) {
-                    breakings.map((breakings) => {
-                        const { description } = parseTitle_1.parseTitle(breakings);
+                    breakings.filter(isValidTitle_1.isValidTitle).map((breaking) => {
+                        const { description } = parseTitle_1.parseTitle(breaking);
                         sections.breakings.contents.unshift({ description });
                     });
                 }
@@ -5945,6 +5952,21 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 9555:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isValidTitle = void 0;
+const isValidTitle = (title) => {
+    return /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z ]+\))?: [\w ]+$/.test(title);
+};
+exports.isValidTitle = isValidTitle;
 
 
 /***/ }),
