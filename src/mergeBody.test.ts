@@ -6,7 +6,7 @@ const nexts = [
     START_COMMENT_OUT,
     "",
     "## Heading",
-    "* **scope** description",
+    "* **scope**: description",
     "",
     END_COMMENT_OUT
   ].join("\n"),
@@ -14,10 +14,10 @@ const nexts = [
     START_COMMENT_OUT,
     "",
     "## Heading",
-    "* **scope** description",
+    "* **scope**: description",
     "",
     "## Heading1",
-    "* **scope1** description1",
+    "* **scope1**: description1",
     "",
     END_COMMENT_OUT
   ].join("\n"),
