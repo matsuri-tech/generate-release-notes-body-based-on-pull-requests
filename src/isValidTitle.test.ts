@@ -14,6 +14,18 @@ const data = [
     output: true
   },
   {
+    input: "feat(scope_scope): description",
+    output: true
+  },
+  {
+    input: "feat(scope/scope): description",
+    output: true
+  },
+  {
+    input: "feat(scope-scope): description",
+    output: true
+  },
+  {
     input: "feat: description",
     output: true
   },

@@ -5964,7 +5964,7 @@ run();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.isValidTitle = void 0;
 const isValidTitle = (title) => {
-    return /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z ]+\))?: [\w ]+$/.test(title);
+    return /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z -_\/]+\))?: [\w ]+$/.test(title);
 };
 exports.isValidTitle = isValidTitle;
 
