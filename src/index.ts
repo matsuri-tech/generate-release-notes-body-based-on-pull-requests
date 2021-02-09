@@ -54,41 +54,52 @@ async function run() {
       },
     };
 
-    pulls.data.some((pull) => {
-      if (isValidTitle(pull.title) === false) return false;
-      const { prefix, scope, description } = parseTitle(pull.title);
+    pulls.data
+      .sort((prev, next) => {
+        const p = new Date(prev.merged_at!);
+        const n = new Date(next.merged_at!);
+        return p < n ? 1 : -1;
+      })
+      .some((pull) => {
 
-      // Use the pull requests up to the latest release pull request.
-      if (RELEASE_PREFIX === prefix) {
-        return true;
-      }
-      // breaking changes
-      const breakings = pull.body?.match(/^BREAKING CHANGE.*/gm);
+        console.log(pull.title, pull.merged_at)
 
-      if (breakings) {
-        breakings.map((breaking) => {
-          const { description } = parseTitle(breaking);
-          sections.breakings.contents.unshift({ description });
-        });
-      }
-      // main prefixes
-      if (["feat", "fix"].includes(prefix)) {
-        sections[prefix].contents.unshift({ scope, description });
-      }
-      // other prefixes
-      if (
-        ["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)
-      ) {
-        sections.others.contents.unshift({
-          scope: scope || prefix,
-          description,
-        });
-      }
-      // chore prefix
-      if (["chore"].includes(prefix)) {
-        sections.others.contents.unshift({ scope, description });
-      }
-    });
+        // Use the pull requests up to the latest release pull request.
+        if (pull.title.startsWith(RELEASE_PREFIX)) {
+          console.log(pull.title, ": Prev Release Note")
+          return true;
+        }
+        
+        if (isValidTitle(pull.title) === false) return false;
+        const { prefix, scope, description } = parseTitle(pull.title);
+
+        // breaking changes
+        const breakings = pull.body?.match(/^BREAKING CHANGE.*/gm);
+
+        if (breakings) {
+          breakings.map((breaking) => {
+            const { description } = parseTitle(breaking);
+            sections.breakings.contents.unshift({ description });
+          });
+        }
+        // main prefixes
+        if (["feat", "fix"].includes(prefix)) {
+          sections[prefix].contents.unshift({ scope, description });
+        }
+        // other prefixes
+        if (
+          ["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)
+        ) {
+          sections.others.contents.unshift({
+            scope: scope || prefix,
+            description,
+          });
+        }
+        // chore prefix
+        if (["chore"].includes(prefix)) {
+          sections.others.contents.unshift({ scope, description });
+        }
+      });
 
     await octokit.pulls.update({
       ...context.repo,

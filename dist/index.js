@@ -5907,15 +5907,23 @@ function run() {
                     contents: [],
                 },
             };
-            pulls.data.some((pull) => {
+            pulls.data
+                .sort((prev, next) => {
+                const p = new Date(prev.merged_at);
+                const n = new Date(next.merged_at);
+                return p < n ? 1 : -1;
+            })
+                .some((pull) => {
                 var _a;
+                console.log(pull.title, pull.merged_at);
+                // Use the pull requests up to the latest release pull request.
+                if (pull.title.startsWith(RELEASE_PREFIX)) {
+                    console.log(pull.title, ": Prev Release Note");
+                    return true;
+                }
                 if (isValidTitle_1.isValidTitle(pull.title) === false)
                     return false;
                 const { prefix, scope, description } = parseTitle_1.parseTitle(pull.title);
-                // Use the pull requests up to the latest release pull request.
-                if (RELEASE_PREFIX === prefix) {
-                    return true;
-                }
                 // breaking changes
                 const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
                 if (breakings) {
