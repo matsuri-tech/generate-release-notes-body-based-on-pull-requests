@@ -23,13 +23,6 @@ async function run() {
 
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
 
-    if(isValidTitle(pull.data.title) === false){
-      core.warning(
-        "The title of this PR does not follow the conventional format."
-      );
-      return;
-    }
-
     if (RELEASE_PREFIX !== parseTitle(pull.data.title).prefix) {
       core.warning(
         "This title prefix does not match the specified release prefix."
@@ -73,7 +66,7 @@ async function run() {
       const breakings = pull.body?.match(/^BREAKING CHANGE.*/gm);
 
       if (breakings) {
-        breakings.filter(isValidTitle).map((breaking) => {
+        breakings.map((breaking) => {
           const { description } = parseTitle(breaking);
           sections.breakings.contents.unshift({ description });
         });

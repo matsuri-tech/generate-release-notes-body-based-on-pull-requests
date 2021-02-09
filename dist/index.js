@@ -5884,10 +5884,6 @@ function run() {
             }
             const pull = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
-            if (isValidTitle_1.isValidTitle(pull.data.title) === false) {
-                core.warning("The title of this PR does not follow the conventional format.");
-                return;
-            }
             if (RELEASE_PREFIX !== parseTitle_1.parseTitle(pull.data.title).prefix) {
                 core.warning("This title prefix does not match the specified release prefix.");
                 return;
@@ -5923,7 +5919,7 @@ function run() {
                 // breaking changes
                 const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
                 if (breakings) {
-                    breakings.filter(isValidTitle_1.isValidTitle).map((breaking) => {
+                    breakings.map((breaking) => {
                         const { description } = parseTitle_1.parseTitle(breaking);
                         sections.breakings.contents.unshift({ description });
                     });
