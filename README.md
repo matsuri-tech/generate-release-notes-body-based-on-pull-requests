@@ -1,5 +1,5 @@
 
-# Generate Release note's body based on pull requests
+# Generate Release Note's body based on pull requests
 
 Release NoteのBodyをPull requestから自動生成するGithub Action
 
