@@ -11,8 +11,9 @@ name: deploy
 
 on: 
   pull_request:
-    branches:
-      - main
+# 走るリポジトリを制限したい場合は次のような記述を追加する。ただし、PRのタイトルがフォーマットにしたがっていない場合は即処理が中断するため、制限する意味はさほどない。
+#    branches:
+#      - ここにPR先のリポジトリ名を入れる
 jobs:
   generate-release-notes-body:
     runs-on: ubuntu-latest
