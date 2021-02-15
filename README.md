@@ -5,8 +5,9 @@ Release NoteのBodyをPull requestから自動生成するGithub Action
 
 ## 使い方
 
+Example: [deploy.yml](https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/.github/workflows/deploy.yml)
+
 ```yml
-# deploy.yml
 name: deploy
 
 on: 
