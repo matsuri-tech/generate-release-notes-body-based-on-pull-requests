@@ -33,6 +33,7 @@ async function run() {
     const pulls = await octokit.pulls.list({
       ...context.repo,
       state: "closed",
+      per_page: 100
     });
 
     const sections: Sections = {

@@ -5888,7 +5888,7 @@ function run() {
                 core.warning("This title prefix does not match the specified release prefix.");
                 return;
             }
-            const pulls = yield octokit.pulls.list(Object.assign(Object.assign({}, context.repo), { state: "closed" }));
+            const pulls = yield octokit.pulls.list(Object.assign(Object.assign({}, context.repo), { state: "closed", per_page: 100 }));
             const sections = {
                 breakings: {
                     heading: "BREAKING CHANGES",
