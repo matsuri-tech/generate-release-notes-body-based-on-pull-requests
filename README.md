@@ -5,20 +5,22 @@ Release NoteのBodyをPull requestから自動生成するGithub Action
 
 ## 使い方
 
+Example: [deploy.yml](https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/.github/workflows/deploy.yml)
+
 ```yml
-# deploy.yml
 name: deploy
 
 on: 
   pull_request:
-    branches:
-      - main
+# 走るリポジトリを制限したい場合は次のような記述を追加する。ただし、PRのタイトルがフォーマットにしたがっていない場合は即処理が中断するため、制限する意味はさほどない。
+#    branches:
+#      - ここにPR先のリポジトリ名を入れる
 jobs:
   generate-release-notes-body:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: matsuri-tech/generate-release-notes-body-based-on-pull-requests@main
+    - uses: matsuri-tech/generate-release-notes-body-based-on-pull-requests@v1
       with:
         # 必須。
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
