@@ -33,7 +33,7 @@ async function run() {
     const pulls = await octokit.pulls.list({
       ...context.repo,
       state: "closed",
-      per_page: 100
+      per_page: 100,
     });
 
     const sections: Sections = {
@@ -62,30 +62,46 @@ async function run() {
         return p < n ? 1 : -1;
       })
       .some((pull) => {
-
-        console.log(pull.title, pull.merged_at)
+        console.log(pull.html_url, pull.number);
 
         // Use the pull requests up to the latest release pull request.
-        if (current.data.title !== pull.title && pull.title.startsWith(RELEASE_PREFIX)) {
-          console.log(pull.title, ": Prev Release Note")
+        if (
+          current.data.title !== pull.title &&
+          pull.title.startsWith(RELEASE_PREFIX)
+        ) {
+          console.log(pull.title, ": Prev Release Note");
           return true;
         }
-        
+
         if (isValidTitle(pull.title) === false) return false;
         const { prefix, scope, description } = parseTitle(pull.title);
 
         // breaking changes
         const breakings = pull.body?.match(/^BREAKING CHANGE.*/gm);
 
+        const {
+          head: { ref: head_ref },
+          html_url,
+        } = pull;
+
         if (breakings) {
           breakings.map((breaking) => {
             const { description } = parseTitle(breaking);
-            sections.breakings.contents.unshift({ description });
+            sections.breakings.contents.unshift({
+              description,
+              html_url,
+              head_ref,
+            });
           });
         }
         // main prefixes
         if (["feat", "fix"].includes(prefix)) {
-          sections[prefix].contents.unshift({ scope, description });
+          sections[prefix].contents.unshift({
+            scope,
+            description,
+            html_url,
+            head_ref,
+          });
         }
         // other prefixes
         if (
@@ -94,11 +110,18 @@ async function run() {
           sections.others.contents.unshift({
             scope: scope || prefix,
             description,
+            html_url,
+            head_ref,
           });
         }
         // chore prefix
         if (["chore"].includes(prefix)) {
-          sections.others.contents.unshift({ scope, description });
+          sections.others.contents.unshift({
+            scope,
+            description,
+            html_url,
+            head_ref,
+          });
         }
       });
 

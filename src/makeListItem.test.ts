@@ -6,16 +6,20 @@ const data = [
     input: {
       scope: "scope",
       description: "description",
+      head_ref: "feat/#2",
+      html_url: "https://example.com"
     },
-    output: `* **scope**: description`
+    output: `* **scope**: description ([feat/#2](https://example.com))`
   },
   {
     description: "no scope conventional commit",
     input: {
       scope: undefined,
       description: "description",
+      head_ref: "feat/#2",
+      html_url: "https://example.com"
     },
-    output: `* description`,
+    output: `* description ([feat/#2](https://example.com))`,
   },
 ];
 
