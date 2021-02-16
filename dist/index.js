@@ -5882,9 +5882,9 @@ function run() {
             if (context.payload.pull_request === undefined) {
                 throw new Error("This action only runs for pull request.");
             }
-            const pull = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
+            const current = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
-            if (RELEASE_PREFIX !== parseTitle_1.parseTitle(pull.data.title).prefix) {
+            if (RELEASE_PREFIX !== parseTitle_1.parseTitle(current.data.title).prefix) {
                 core.warning("This title prefix does not match the specified release prefix.");
                 return;
             }
@@ -5917,7 +5917,7 @@ function run() {
                 var _a;
                 console.log(pull.title, pull.merged_at);
                 // Use the pull requests up to the latest release pull request.
-                if (pull.title.startsWith(RELEASE_PREFIX)) {
+                if (current.data.title !== pull.title && pull.title.startsWith(RELEASE_PREFIX)) {
                     console.log(pull.title, ": Prev Release Note");
                     return true;
                 }

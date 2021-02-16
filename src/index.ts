@@ -16,14 +16,14 @@ async function run() {
       throw new Error("This action only runs for pull request.");
     }
 
-    const pull = await octokit.pulls.get({
+    const current = await octokit.pulls.get({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
     });
 
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
 
-    if (RELEASE_PREFIX !== parseTitle(pull.data.title).prefix) {
+    if (RELEASE_PREFIX !== parseTitle(current.data.title).prefix) {
       core.warning(
         "This title prefix does not match the specified release prefix."
       );
@@ -66,7 +66,7 @@ async function run() {
         console.log(pull.title, pull.merged_at)
 
         // Use the pull requests up to the latest release pull request.
-        if (pull.title.startsWith(RELEASE_PREFIX)) {
+        if (current.data.title !== pull.title && pull.title.startsWith(RELEASE_PREFIX)) {
           console.log(pull.title, ": Prev Release Note")
           return true;
         }
