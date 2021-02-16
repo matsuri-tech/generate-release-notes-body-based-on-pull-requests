@@ -62,7 +62,7 @@ async function run() {
         return p < n ? 1 : -1;
       })
       .some((pull) => {
-        console.log(pull.html_url, pull.number);
+        console.log(pull.title);
 
         // Use the pull requests up to the latest release pull request.
         if (
@@ -124,6 +124,8 @@ async function run() {
           });
         }
       });
+
+    console.log(sections);
 
     await octokit.pulls.update({
       ...context.repo,
