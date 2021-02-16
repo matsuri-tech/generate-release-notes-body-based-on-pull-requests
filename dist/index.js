@@ -5919,12 +5919,13 @@ function run() {
                 // Use the pull requests up to the latest release pull request.
                 if (current.data.title !== pull.title &&
                     pull.title.startsWith(RELEASE_PREFIX)) {
-                    console.log(pull.title, ": Prev Release Note");
+                    console.log("Prev Release Note: ", pull.title);
                     return true;
                 }
                 if (isValidTitle_1.isValidTitle(pull.title) === false)
                     return false;
                 const { prefix, scope, description } = parseTitle_1.parseTitle(pull.title);
+                console.log("Parsed PR Title: ", prefix, scope, description);
                 // breaking changes
                 const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
                 const { head: { ref: head_ref }, html_url, } = pull;
@@ -5966,7 +5967,7 @@ function run() {
                     });
                 }
             });
-            console.log(sections);
+            console.log("Sections: ", JSON.stringify(sections, null, 2));
             yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body || "", makeBody_1.makeBody(sections)) }));
         }
         catch (error) {

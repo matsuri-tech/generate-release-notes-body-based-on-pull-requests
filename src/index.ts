@@ -69,12 +69,15 @@ async function run() {
           current.data.title !== pull.title &&
           pull.title.startsWith(RELEASE_PREFIX)
         ) {
-          console.log(pull.title, ": Prev Release Note");
+          console.log("Prev Release Note: ", pull.title);
           return true;
         }
 
         if (isValidTitle(pull.title) === false) return false;
         const { prefix, scope, description } = parseTitle(pull.title);
+
+
+        console.log("Parsed PR Title: ", prefix, scope, description);
 
         // breaking changes
         const breakings = pull.body?.match(/^BREAKING CHANGE.*/gm);
@@ -125,7 +128,7 @@ async function run() {
         }
       });
 
-    console.log(sections);
+    console.log("Sections: ", JSON.stringify(sections, null, 2));
 
     await octokit.pulls.update({
       ...context.repo,
