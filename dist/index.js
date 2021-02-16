@@ -5915,7 +5915,7 @@ function run() {
             })
                 .some((pull) => {
                 var _a;
-                console.log(pull.title, pull.merged_at);
+                console.log(pull);
                 // Use the pull requests up to the latest release pull request.
                 if (current.data.title !== pull.title && pull.title.startsWith(RELEASE_PREFIX)) {
                     console.log(pull.title, ": Prev Release Note");
