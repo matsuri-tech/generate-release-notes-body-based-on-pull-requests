@@ -5915,7 +5915,7 @@ function run() {
             })
                 .some((pull) => {
                 var _a;
-                console.log(pull.html_url, pull.number);
+                console.log(pull.title);
                 // Use the pull requests up to the latest release pull request.
                 if (current.data.title !== pull.title &&
                     pull.title.startsWith(RELEASE_PREFIX)) {
@@ -5966,6 +5966,7 @@ function run() {
                     });
                 }
             });
+            console.log(sections);
             yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body || "", makeBody_1.makeBody(sections)) }));
         }
         catch (error) {
