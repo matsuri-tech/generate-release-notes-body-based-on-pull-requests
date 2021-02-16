@@ -11,6 +11,8 @@ const data: [Sections, string][] = [
           {
             scope: "scope",
             description: "description",
+            head_ref: "feat/#2",
+            html_url: "https://example.com"
           },
         ],
       },
@@ -19,7 +21,7 @@ const data: [Sections, string][] = [
       START_COMMENT_OUT,
       "",
       "## Heading",
-      "* **scope**: description",
+      "* **scope**: description ([feat/#2](https://example.com))",
       "",
       END_COMMENT_OUT
     ].join("\n"),
@@ -32,6 +34,8 @@ const data: [Sections, string][] = [
           {
             scope: "scope1",
             description: "description1",
+            head_ref: "feat/#2",
+            html_url: "https://example.com"
           },
         ],
       },
@@ -41,6 +45,8 @@ const data: [Sections, string][] = [
           {
             scope: "scope2",
             description: "description2",
+            head_ref: "feat/#2",
+            html_url: "https://example.com"
           },
         ],
       },
@@ -49,10 +55,10 @@ const data: [Sections, string][] = [
       START_COMMENT_OUT,
       "",
       "## Heading1",
-      "* **scope1**: description1",
+      "* **scope1**: description1 ([feat/#2](https://example.com))",
       "",
       "## Heading2",
-      "* **scope2**: description2",
+      "* **scope2**: description2 ([feat/#2](https://example.com))",
       "",
       END_COMMENT_OUT
     ].join("\n"),

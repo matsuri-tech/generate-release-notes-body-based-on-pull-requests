@@ -4,6 +4,8 @@ declare type Sections = Readonly<{
     contents: {
       scope?: string;
       description: string;
+      head_ref: string
+      html_url: string;
     }[];
   };
 }>;
