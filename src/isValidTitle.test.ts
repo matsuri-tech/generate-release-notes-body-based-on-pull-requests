@@ -30,17 +30,36 @@ const data = [
     output: true
   },
   {
+    input: "feat description",
+    output: false
+  },
+  {
+    input: "feat(): description",
+    output: false
+  },
+  {
+    input: "feat:description",
+    output: false
+  },
+  {
     input: "foat: description",
     output: false
   },
   {
     input: "feat:",
     output: false
-  }
-  ,
+  },
   {
     input: ":description",
     output: false
+  },
+  {
+    input: "chore: lighthouse ciを導入",
+    output: true
+  },
+  {
+    input: "build: remove next-offline",
+    output: true
   }
 ];
 
