@@ -130,7 +130,6 @@ async function run() {
 
     console.log("Sections: ", JSON.stringify(sections, null, 2));
 
-
     await octokit.pulls.update({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
