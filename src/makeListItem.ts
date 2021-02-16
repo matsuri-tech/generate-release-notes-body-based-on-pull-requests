@@ -1,9 +1,10 @@
 export const makeListItem = ({
   scope,
   description,
-}: {
-  scope?: string;
-  description: string;
-}) => {
-  return scope ? `* **${scope}**: ${description}` : `* ${description}`;
+  html_url,
+  head_ref,
+}: Sections[string]["contents"][number]) => {
+  return scope
+    ? `* **${scope}**: ${description} ([${head_ref}](${html_url}))`
+    : `* ${description} ([${head_ref}](${html_url}))`;
 };

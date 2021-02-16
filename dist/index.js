@@ -5882,9 +5882,9 @@ function run() {
             if (context.payload.pull_request === undefined) {
                 throw new Error("This action only runs for pull request.");
             }
-            const pull = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
+            const current = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
-            if (RELEASE_PREFIX !== parseTitle_1.parseTitle(pull.data.title).prefix) {
+            if (RELEASE_PREFIX !== parseTitle_1.parseTitle(current.data.title).prefix) {
                 core.warning("This title prefix does not match the specified release prefix.");
                 return;
             }
@@ -5915,9 +5915,10 @@ function run() {
             })
                 .some((pull) => {
                 var _a;
-                console.log(pull.title, pull.merged_at);
+                console.log(pull.html_url, pull.number);
                 // Use the pull requests up to the latest release pull request.
-                if (pull.title.startsWith(RELEASE_PREFIX)) {
+                if (current.data.title !== pull.title &&
+                    pull.title.startsWith(RELEASE_PREFIX)) {
                     console.log(pull.title, ": Prev Release Note");
                     return true;
                 }
@@ -5926,26 +5927,43 @@ function run() {
                 const { prefix, scope, description } = parseTitle_1.parseTitle(pull.title);
                 // breaking changes
                 const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
+                const { head: { ref: head_ref }, html_url, } = pull;
                 if (breakings) {
                     breakings.map((breaking) => {
                         const { description } = parseTitle_1.parseTitle(breaking);
-                        sections.breakings.contents.unshift({ description });
+                        sections.breakings.contents.unshift({
+                            description,
+                            html_url,
+                            head_ref,
+                        });
                     });
                 }
                 // main prefixes
                 if (["feat", "fix"].includes(prefix)) {
-                    sections[prefix].contents.unshift({ scope, description });
+                    sections[prefix].contents.unshift({
+                        scope,
+                        description,
+                        html_url,
+                        head_ref,
+                    });
                 }
                 // other prefixes
                 if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
                     sections.others.contents.unshift({
                         scope: scope || prefix,
                         description,
+                        html_url,
+                        head_ref,
                     });
                 }
                 // chore prefix
                 if (["chore"].includes(prefix)) {
-                    sections.others.contents.unshift({ scope, description });
+                    sections.others.contents.unshift({
+                        scope,
+                        description,
+                        html_url,
+                        head_ref,
+                    });
                 }
             });
             yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body || "", makeBody_1.makeBody(sections)) }));
@@ -6016,8 +6034,10 @@ exports.makeBody = makeBody;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.makeListItem = void 0;
-const makeListItem = ({ scope, description, }) => {
-    return scope ? `* **${scope}**: ${description}` : `* ${description}`;
+const makeListItem = ({ scope, description, html_url, head_ref, }) => {
+    return scope
+        ? `* **${scope}**: ${description} ([${head_ref}](${html_url}))`
+        : `* ${description} ([${head_ref}](${html_url}))`;
 };
 exports.makeListItem = makeListItem;
 
