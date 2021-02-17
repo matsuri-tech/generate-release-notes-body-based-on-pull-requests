@@ -1,4 +1,3 @@
-import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 import { makeListItem } from "./makeListItem";
 
 export const makeBody = (sections: Sections) => {
@@ -15,9 +14,5 @@ export const makeBody = (sections: Sections) => {
     })
     .filter(Boolean)
     .join("\n\n");
-  if (inner) {
-    return [START_COMMENT_OUT, inner, END_COMMENT_OUT].join("\n\n");
-  } else {
-    return "";
-  }
+  return inner
 };

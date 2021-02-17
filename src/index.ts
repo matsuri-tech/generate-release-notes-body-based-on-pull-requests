@@ -4,6 +4,7 @@ import { parseTitle } from "./parseTitle";
 import { makeBody } from "./makeBody";
 import { mergeBody } from "./mergeBody";
 import { isValidTitle } from "./isValidTitle";
+import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 
 async function run() {
   try {
@@ -176,11 +177,13 @@ async function run() {
       body: mergeBody(
         context.payload.pull_request.body,
         [
+          START_COMMENT_OUT,
           makeBody(sections),
           prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+          END_COMMENT_OUT,
         ]
           .filter(Boolean)
-          .join("\n")
+          .join("\n\n")
       ),
     });
   } catch (error) {
