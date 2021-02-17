@@ -173,12 +173,15 @@ async function run() {
     await octokit.pulls.update({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
-      body: [
-        mergeBody(context.payload.pull_request.body, makeBody(sections)),
-        prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      body: mergeBody(
+        context.payload.pull_request.body,
+        [
+          makeBody(sections),
+          prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      ),
     });
   } catch (error) {
     core.setFailed(error.message);
