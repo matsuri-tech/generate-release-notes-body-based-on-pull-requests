@@ -5910,6 +5910,7 @@ function run() {
             const isMerged = (pull) => {
                 return !!pull.merged_at;
             };
+            let prev = null;
             pulls.data
                 .filter(isMerged)
                 .sort((prev, next) => {
@@ -5919,7 +5920,6 @@ function run() {
             })
                 .some((pull) => {
                 var _a;
-                console.log(pull.title);
                 if (current.data.merged_at &&
                     new Date(current.data.merged_at) < new Date(pull.merged_at)) {
                     console.log(pull.title, ":", "This is a pull request merged after the current release pull request.");
@@ -5929,6 +5929,10 @@ function run() {
                 if ((current.data.title !== pull.title ||
                     current.data.merged_at !== pull.merged_at) &&
                     pull.title.startsWith(RELEASE_PREFIX)) {
+                    prev = {
+                        title: pull.title,
+                        html_url: pull.html_url,
+                    };
                     console.log(pull.title, ":", "This is the last release pull request merged before the current release pull request.");
                     return true;
                 }
@@ -5963,7 +5967,12 @@ function run() {
                 }
             });
             console.log("generated source", ":", JSON.stringify(sections, null, 2));
-            yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body, makeBody_1.makeBody(sections)) }));
+            yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: [
+                    mergeBody_1.mergeBody(context.payload.pull_request.body, makeBody_1.makeBody(sections)),
+                    prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+                ]
+                    .filter(Boolean)
+                    .join("\n") }));
         }
         catch (error) {
             core.setFailed(error.message);
