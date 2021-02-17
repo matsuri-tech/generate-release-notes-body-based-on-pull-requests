@@ -5926,8 +5926,8 @@ function run() {
                     return false;
                 }
                 // Use the pull requests up to the latest release pull request.
-                if (current.data.title !== pull.title &&
-                    current.data.merged_at !== pull.merged_at &&
+                if ((current.data.title !== pull.title ||
+                    current.data.merged_at !== pull.merged_at) &&
                     pull.title.startsWith(RELEASE_PREFIX)) {
                     prev = {
                         title: pull.title,
