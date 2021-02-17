@@ -5873,6 +5873,7 @@ const parseTitle_1 = __nccwpck_require__(3747);
 const makeBody_1 = __nccwpck_require__(4550);
 const mergeBody_1 = __nccwpck_require__(1073);
 const isValidTitle_1 = __nccwpck_require__(9555);
+const constants_1 = __nccwpck_require__(9042);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -5968,11 +5969,13 @@ function run() {
             });
             console.log("generated source", ":", JSON.stringify(sections, null, 2));
             yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body, [
+                    constants_1.START_COMMENT_OUT,
                     makeBody_1.makeBody(sections),
                     prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+                    constants_1.END_COMMENT_OUT,
                 ]
                     .filter(Boolean)
-                    .join("\n")) }));
+                    .join("\n\n")) }));
         }
         catch (error) {
             core.setFailed(error.message);
@@ -6006,7 +6009,6 @@ exports.isValidTitle = isValidTitle;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.makeBody = void 0;
-const constants_1 = __nccwpck_require__(9042);
 const makeListItem_1 = __nccwpck_require__(4832);
 const makeBody = (sections) => {
     const inner = Object.entries(sections)
@@ -6021,12 +6023,7 @@ const makeBody = (sections) => {
     })
         .filter(Boolean)
         .join("\n\n");
-    if (inner) {
-        return [constants_1.START_COMMENT_OUT, inner, constants_1.END_COMMENT_OUT].join("\n\n");
-    }
-    else {
-        return "";
-    }
+    return inner;
 };
 exports.makeBody = makeBody;
 
