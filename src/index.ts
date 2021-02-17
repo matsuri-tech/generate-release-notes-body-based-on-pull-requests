@@ -63,6 +63,11 @@ async function run() {
       return !!pull.merged_at;
     };
 
+    let prev = null as null | {
+      title: string;
+      html_url: string;
+    };
+
     pulls.data
       .filter(isMerged)
       .sort((prev, next) => {
@@ -71,8 +76,6 @@ async function run() {
         return p < n ? 1 : -1;
       })
       .some((pull) => {
-        console.log(pull.title);
-
         if (
           current.data.merged_at &&
           new Date(current.data.merged_at) < new Date(pull.merged_at)
@@ -91,6 +94,10 @@ async function run() {
           current.data.merged_at !== pull.merged_at &&
           pull.title.startsWith(RELEASE_PREFIX)
         ) {
+          prev = {
+            title: pull.title,
+            html_url: pull.html_url,
+          };
           console.log(
             pull.title,
             ":",
@@ -166,7 +173,12 @@ async function run() {
     await octokit.pulls.update({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
-      body: mergeBody(context.payload.pull_request.body, makeBody(sections)),
+      body: [
+        mergeBody(context.payload.pull_request.body, makeBody(sections)),
+        prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
     });
   } catch (error) {
     core.setFailed(error.message);
