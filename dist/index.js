@@ -5885,7 +5885,7 @@ function run() {
             const current = yield octokit.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
             if (RELEASE_PREFIX !== parseTitle_1.parseTitle(current.data.title).prefix) {
-                core.warning("This title prefix does not match the specified release prefix.");
+                core.warning(`This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`);
                 return;
             }
             const pulls = yield octokit.pulls.list(Object.assign(Object.assign({}, context.repo), { state: "closed", per_page: 100 }));
@@ -5907,7 +5907,11 @@ function run() {
                     contents: [],
                 },
             };
+            const isMerged = (pull) => {
+                return !!pull.merged_at;
+            };
             pulls.data
+                .filter(isMerged)
                 .sort((prev, next) => {
                 const p = new Date(prev.merged_at);
                 const n = new Date(next.merged_at);
@@ -5916,59 +5920,50 @@ function run() {
                 .some((pull) => {
                 var _a;
                 console.log(pull.title);
+                if (current.data.merged_at &&
+                    new Date(current.data.merged_at) < new Date(pull.merged_at)) {
+                    console.log(pull.title, ":", "This is a pull request merged after the current release pull request.");
+                    return false;
+                }
                 // Use the pull requests up to the latest release pull request.
                 if (current.data.title !== pull.title &&
+                    current.data.merged_at !== pull.merged_at &&
                     pull.title.startsWith(RELEASE_PREFIX)) {
-                    console.log("Prev Release Note: ", pull.title);
+                    console.log(pull.title, ":", "This is the last release pull request merged before the current release pull request.");
                     return true;
                 }
-                if (isValidTitle_1.isValidTitle(pull.title) === false)
+                if (isValidTitle_1.isValidTitle(pull.title) === false) {
+                    console.log(pull.title, ":", "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts");
                     return false;
+                }
                 const { prefix, scope, description } = parseTitle_1.parseTitle(pull.title);
-                console.log("Parsed PR Title: ", prefix, scope, description);
+                console.log(pull.title, ":", "parsed", "=>", prefix, scope, description);
                 // breaking changes
                 const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
-                const { head: { ref: head_ref }, html_url, } = pull;
+                const identifier = { head_ref: pull.head.ref, html_url: pull.html_url };
                 if (breakings) {
                     breakings.map((breaking) => {
                         const { description } = parseTitle_1.parseTitle(breaking);
-                        sections.breakings.contents.unshift({
-                            description,
-                            html_url,
-                            head_ref,
-                        });
+                        sections.breakings.contents.unshift(Object.assign({ description }, identifier));
                     });
                 }
                 // main prefixes
                 if (["feat", "fix"].includes(prefix)) {
-                    sections[prefix].contents.unshift({
-                        scope,
-                        description,
-                        html_url,
-                        head_ref,
-                    });
+                    sections[prefix].contents.unshift(Object.assign({ scope,
+                        description }, identifier));
                 }
                 // other prefixes
                 if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
-                    sections.others.contents.unshift({
-                        scope: scope || prefix,
-                        description,
-                        html_url,
-                        head_ref,
-                    });
+                    sections.others.contents.unshift(Object.assign({ scope: scope || prefix, description }, identifier));
                 }
                 // chore prefix
                 if (["chore"].includes(prefix)) {
-                    sections.others.contents.unshift({
-                        scope,
-                        description,
-                        html_url,
-                        head_ref,
-                    });
+                    sections.others.contents.unshift(Object.assign({ scope,
+                        description }, identifier));
                 }
             });
-            console.log("Sections: ", JSON.stringify(sections, null, 2));
-            yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body || "", makeBody_1.makeBody(sections)) }));
+            console.log("generated source", ":", JSON.stringify(sections, null, 2));
+            yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body, makeBody_1.makeBody(sections)) }));
         }
         catch (error) {
             core.setFailed(error.message);
@@ -6054,7 +6049,7 @@ exports.makeListItem = makeListItem;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.mergeBody = void 0;
 const constants_1 = __nccwpck_require__(9042);
-const mergeBody = (current, next) => {
+const mergeBody = (current = "", next = "") => {
     return current
         ? constants_1.CONTENT_REGEXP.test(current)
             ? current.replace(constants_1.CONTENT_REGEXP, next)
