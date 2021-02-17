@@ -4,6 +4,7 @@ import { parseTitle } from "./parseTitle";
 import { makeBody } from "./makeBody";
 import { mergeBody } from "./mergeBody";
 import { isValidTitle } from "./isValidTitle";
+import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 
 async function run() {
   try {
@@ -63,6 +64,11 @@ async function run() {
       return !!pull.merged_at;
     };
 
+    let prev = null as null | {
+      title: string;
+      html_url: string;
+    };
+
     pulls.data
       .filter(isMerged)
       .sort((prev, next) => {
@@ -71,8 +77,6 @@ async function run() {
         return p < n ? 1 : -1;
       })
       .some((pull) => {
-        console.log(pull.title);
-
         if (
           current.data.merged_at &&
           new Date(current.data.merged_at) < new Date(pull.merged_at)
@@ -87,10 +91,14 @@ async function run() {
 
         // Use the pull requests up to the latest release pull request.
         if (
-          current.data.title !== pull.title &&
-          current.data.merged_at !== pull.merged_at &&
+          (current.data.title !== pull.title ||
+            current.data.merged_at !== pull.merged_at) &&
           pull.title.startsWith(RELEASE_PREFIX)
         ) {
+          prev = {
+            title: pull.title,
+            html_url: pull.html_url,
+          };
           console.log(
             pull.title,
             ":",
@@ -166,7 +174,17 @@ async function run() {
     await octokit.pulls.update({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
-      body: mergeBody(context.payload.pull_request.body, makeBody(sections)),
+      body: mergeBody(
+        context.payload.pull_request.body,
+        [
+          START_COMMENT_OUT,
+          makeBody(sections),
+          prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+          END_COMMENT_OUT,
+        ]
+          .filter(Boolean)
+          .join("\n\n")
+      ),
     });
   } catch (error) {
     core.setFailed(error.message);
