@@ -5967,12 +5967,12 @@ function run() {
                 }
             });
             console.log("generated source", ":", JSON.stringify(sections, null, 2));
-            yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: [
-                    mergeBody_1.mergeBody(context.payload.pull_request.body, makeBody_1.makeBody(sections)),
+            yield octokit.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody_1.mergeBody(context.payload.pull_request.body, [
+                    makeBody_1.makeBody(sections),
                     prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
                 ]
                     .filter(Boolean)
-                    .join("\n") }));
+                    .join("\n")) }));
         }
         catch (error) {
             core.setFailed(error.message);
