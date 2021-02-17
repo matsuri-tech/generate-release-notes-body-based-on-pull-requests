@@ -3,6 +3,8 @@
 
 Release NoteのBodyをPull requestから自動生成するGithub Action
 
+<img src="https://user-images.githubusercontent.com/30747709/108146634-dc0a2580-7110-11eb-90d0-10ab2e441b40.png" width="500px"/>
+
 ## 使い方
 
 ```yml
