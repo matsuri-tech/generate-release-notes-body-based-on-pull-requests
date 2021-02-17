@@ -87,8 +87,8 @@ async function run() {
 
         // Use the pull requests up to the latest release pull request.
         if (
-          current.data.title !== pull.title &&
-          current.data.merged_at !== pull.merged_at &&
+          (current.data.title !== pull.title ||
+            current.data.merged_at !== pull.merged_at) &&
           pull.title.startsWith(RELEASE_PREFIX)
         ) {
           console.log(
