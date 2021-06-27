@@ -32,7 +32,7 @@ export const validate = (
       };
     }
   }
-  if (isValidTitle(target.title)) {
+  if (isValidTitle(target.title) === false) {
     return {
       error: {
         type: "INVALID_TITLE_FORMAT" as const,

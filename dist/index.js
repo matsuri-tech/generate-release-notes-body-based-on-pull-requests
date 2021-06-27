@@ -6254,29 +6254,29 @@ var __webpack_exports__ = {};
 // ESM COMPAT FLAG
 __nccwpck_require__.r(__webpack_exports__);
 
-// EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
-var core = __nccwpck_require__(186);
-// EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
-var github = __nccwpck_require__(438);
-;// CONCATENATED MODULE: ./src/parseTitle.ts
-const parseTitle = (title) => {
-    const [label, description] = title.split(":");
-    const [prefix, scope] = label.split(/\(|\)/);
-    return {
-        prefix,
-        scope,
-        description: description.trim(),
-    };
+;// CONCATENATED MODULE: ./src/generator/constants.ts
+const START_COMMENT_OUT = "<!--generate-release-notes-body-based-on-pull-requests-->";
+const END_COMMENT_OUT = "<!--generate-release-notes-body-based-on-pull-requests-->";
+const CONTENT_REGEXP = new RegExp(`^${START_COMMENT_OUT}[\\s\\S]*${END_COMMENT_OUT}`, "gm");
+
+;// CONCATENATED MODULE: ./src/generator/mergeBody.ts
+
+const mergeBody = (current = "", next = "") => {
+    return current
+        ? CONTENT_REGEXP.test(current)
+            ? current.replace(CONTENT_REGEXP, next)
+            : [current, next].join("\n")
+        : next;
 };
 
-;// CONCATENATED MODULE: ./src/makeListItem.ts
+;// CONCATENATED MODULE: ./src/generator/makeListItem.ts
 const makeListItem = ({ scope, description, html_url, head_ref, }) => {
     return scope
         ? `* **${scope}**: ${description} ([${head_ref}](${html_url}))`
         : `* ${description} ([${head_ref}](${html_url}))`;
 };
 
-;// CONCATENATED MODULE: ./src/makeBody.ts
+;// CONCATENATED MODULE: ./src/generator/makeBody.ts
 
 const makeBody = (sections) => {
     const inner = Object.entries(sections)
@@ -6294,24 +6294,119 @@ const makeBody = (sections) => {
     return inner;
 };
 
-;// CONCATENATED MODULE: ./src/constants.ts
-const START_COMMENT_OUT = "<!--generate-release-notes-body-based-on-pull-requests-->";
-const END_COMMENT_OUT = "<!--generate-release-notes-body-based-on-pull-requests-->";
-const CONTENT_REGEXP = new RegExp(`^${START_COMMENT_OUT}[\\s\\S]*${END_COMMENT_OUT}`, "gm");
+;// CONCATENATED MODULE: ./src/generator/index.ts
 
-;// CONCATENATED MODULE: ./src/mergeBody.ts
 
-const mergeBody = (current = "", next = "") => {
-    return current
-        ? CONTENT_REGEXP.test(current)
-            ? current.replace(CONTENT_REGEXP, next)
-            : [current, next].join("\n")
-        : next;
+
+const generate = (current = "", sections, prev) => {
+    const next = makeBody(sections);
+    return mergeBody(current, [
+        START_COMMENT_OUT,
+        next,
+        prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+        END_COMMENT_OUT,
+    ]
+        .filter(Boolean)
+        .join("\n\n"));
 };
 
-;// CONCATENATED MODULE: ./src/isValidTitle.ts
+// EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
+var core = __nccwpck_require__(186);
+// EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
+var github = __nccwpck_require__(438);
+;// CONCATENATED MODULE: ./src/parser/index.ts
+const MAIN_PREFIXES = ["feat", "fix"];
+const OTHER_PREFIXES = [
+    "build",
+    "ci",
+    "perf",
+    "test",
+    "refactor",
+    "docs",
+    "chore",
+];
+const parseTitle = ({ title, }) => {
+    const [label, description] = title.split(":");
+    const [prefix, scope] = label.split(/\(|\)/);
+    return {
+        prefix,
+        scope,
+        description: description.trim(),
+    };
+};
+const parse = ({ title, body, head: { ref: head_ref }, html_url, }) => {
+    var _a;
+    const [label, description] = title.split(":");
+    const head = label.split(/\(|\)/);
+    const prefix = head[0];
+    const prefixGroup = MAIN_PREFIXES.includes(prefix)
+        ? prefix
+        : OTHER_PREFIXES.includes(prefix)
+            ? "others"
+            : undefined;
+    const scope = head[1] || (prefixGroup === "others" && prefix !== "chore")
+        ? prefix
+        : undefined;
+    const breakings = ((_a = body === null || body === void 0 ? void 0 : body.match(/^BREAKING CHANGE.*/gm)) === null || _a === void 0 ? void 0 : _a.map((breaking) => {
+        var _a, _b;
+        return {
+            description: (_b = (_a = breaking.split(":")) === null || _a === void 0 ? void 0 : _a[1]) === null || _b === void 0 ? void 0 : _b.trim(),
+            head_ref,
+            html_url,
+        };
+    })) || undefined;
+    return {
+        prefix,
+        prefixGroup,
+        scope,
+        description: description.trim(),
+        breakings,
+        head_ref,
+        html_url,
+    };
+};
+
+;// CONCATENATED MODULE: ./src/validator/isValidTitle.ts
 const isValidTitle = (title) => {
     return /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z -_\/]+\))?: .*$/.test(title);
+};
+
+;// CONCATENATED MODULE: ./src/validator/index.ts
+
+const validate = (current, target, { releasePrefix }) => {
+    if (current.merged_at) {
+        if (new Date(current.merged_at) < new Date(target.merged_at)) {
+            return {
+                error: {
+                    type: "MERGED_PULL_AFTER",
+                    message: "This is a pull request merged after the current release pull request.",
+                    continuous: true,
+                },
+            };
+        }
+    }
+    if (current.title !== target.title ||
+        current.merged_at !== target.merged_at) {
+        if (target.title.startsWith(releasePrefix)) {
+            return {
+                error: {
+                    type: "PREVIOUS_RELEASE_PULL",
+                    message: "This is the last release pull request merged before the current release pull request.",
+                    continuous: false,
+                },
+            };
+        }
+    }
+    if (isValidTitle(target.title) === false) {
+        return {
+            error: {
+                type: "INVALID_TITLE_FORMAT",
+                message: "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts",
+                continuous: true,
+            },
+        };
+    }
+    return {};
 };
 
 ;// CONCATENATED MODULE: ./src/index.ts
@@ -6329,8 +6424,9 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
-
-
+const isMergedPull = (pull) => {
+    return !!pull.merged_at;
+};
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -6342,7 +6438,7 @@ function run() {
             }
             const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
-            if (RELEASE_PREFIX !== parseTitle(current.data.title).prefix) {
+            if (current.data.title.startsWith(RELEASE_PREFIX) === false) {
                 core.warning(`This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`);
                 return;
             }
@@ -6365,74 +6461,37 @@ function run() {
                     contents: [],
                 },
             };
-            const isMerged = (pull) => {
-                return !!pull.merged_at;
-            };
-            let prev = null;
+            let prev = undefined;
             pulls.data
-                .filter(isMerged)
+                .filter(isMergedPull)
                 .sort((prev, next) => {
                 const p = new Date(prev.merged_at);
                 const n = new Date(next.merged_at);
                 return p < n ? 1 : -1;
             })
                 .some((pull) => {
-                var _a;
-                if (current.data.merged_at &&
-                    new Date(current.data.merged_at) < new Date(pull.merged_at)) {
-                    console.log(pull.title, ":", "This is a pull request merged after the current release pull request.");
-                    return false;
+                const { error } = validate(current.data, pull, {
+                    releasePrefix: RELEASE_PREFIX,
+                });
+                if (error) {
+                    console.log(pull.title, ":", error.message);
+                    if (error.type === "PREVIOUS_RELEASE_PULL") {
+                        prev = pull;
+                    }
+                    return error.continuous === false;
                 }
-                // Use the pull requests up to the latest release pull request.
-                if ((current.data.title !== pull.title ||
-                    current.data.merged_at !== pull.merged_at) &&
-                    pull.title.startsWith(RELEASE_PREFIX)) {
-                    prev = {
-                        title: pull.title,
-                        html_url: pull.html_url,
-                    };
-                    console.log(pull.title, ":", "This is the last release pull request merged before the current release pull request.");
-                    return true;
-                }
-                if (isValidTitle(pull.title) === false) {
-                    console.log(pull.title, ":", "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts");
-                    return false;
-                }
-                const { prefix, scope, description } = parseTitle(pull.title);
-                console.log(pull.title, ":", "parsed", "=>", prefix, scope, description);
-                // breaking changes
-                const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
-                const identifier = { head_ref: pull.head.ref, html_url: pull.html_url };
-                if (breakings) {
-                    breakings.map((breaking) => {
-                        const { description } = parseTitle(breaking);
-                        sections.breakings.contents.unshift(Object.assign({ description }, identifier));
+                const result = parse(pull);
+                if (result.breakings) {
+                    result.breakings.map((breaking) => {
+                        sections.breakings.contents.unshift(breaking);
                     });
                 }
-                // main prefixes
-                if (["feat", "fix"].includes(prefix)) {
-                    sections[prefix].contents.unshift(Object.assign({ scope,
-                        description }, identifier));
-                }
-                // other prefixes
-                if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
-                    sections.others.contents.unshift(Object.assign({ scope: scope || prefix, description }, identifier));
-                }
-                // chore prefix
-                if (["chore"].includes(prefix)) {
-                    sections.others.contents.unshift(Object.assign({ scope,
-                        description }, identifier));
+                if (result.prefixGroup) {
+                    sections[result.prefixGroup].contents.unshift(result);
                 }
             });
             console.log("generated source", ":", JSON.stringify(sections, null, 2));
-            yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody(context.payload.pull_request.body, [
-                    START_COMMENT_OUT,
-                    makeBody(sections),
-                    prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
-                    END_COMMENT_OUT,
-                ]
-                    .filter(Boolean)
-                    .join("\n\n")) }));
+            yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: generate(context.payload.pull_request.body, sections, prev) }));
         }
         catch (error) {
             core.setFailed(error.message);
