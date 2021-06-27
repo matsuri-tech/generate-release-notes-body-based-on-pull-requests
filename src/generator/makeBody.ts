@@ -14,5 +14,5 @@ export const makeBody = (sections: Sections) => {
     })
     .filter(Boolean)
     .join("\n\n");
-  return inner
+  return inner;
 };

@@ -1,5 +1,5 @@
+import { START_COMMENT_OUT, END_COMMENT_OUT } from "./constants";
 import { mergeBody } from "./mergeBody";
-import {START_COMMENT_OUT, END_COMMENT_OUT} from "./constants"
 
 const nexts = [
   [
@@ -8,7 +8,7 @@ const nexts = [
     "## Heading",
     "* **scope**: description",
     "",
-    END_COMMENT_OUT
+    END_COMMENT_OUT,
   ].join("\n"),
   [
     START_COMMENT_OUT,
@@ -19,7 +19,7 @@ const nexts = [
     "## Heading1",
     "* **scope1**: description1",
     "",
-    END_COMMENT_OUT
+    END_COMMENT_OUT,
   ].join("\n"),
 ];
 
