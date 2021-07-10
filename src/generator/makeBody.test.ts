@@ -1,6 +1,4 @@
-import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 import { makeBody } from "./makeBody";
-
 
 const data: [Sections, string][] = [
   [
@@ -12,7 +10,7 @@ const data: [Sections, string][] = [
             scope: "scope",
             description: "description",
             head_ref: "feat/#2",
-            html_url: "https://example.com"
+            html_url: "https://example.com",
           },
         ],
       },
@@ -31,7 +29,7 @@ const data: [Sections, string][] = [
             scope: "scope1",
             description: "description1",
             head_ref: "feat/#2",
-            html_url: "https://example.com"
+            html_url: "https://example.com",
           },
         ],
       },
@@ -42,7 +40,7 @@ const data: [Sections, string][] = [
             scope: "scope2",
             description: "description2",
             head_ref: "feat/#2",
-            html_url: "https://example.com"
+            html_url: "https://example.com",
           },
         ],
       },

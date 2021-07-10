@@ -1,4 +1,4 @@
-import { parseTitle } from "./parseTitle";
+import { parseTitle } from "./";
 
 const data = [
   {
@@ -23,6 +23,6 @@ const data = [
 
 data.forEach(({ description, input, output }) => {
   test(description, () => {
-    expect(parseTitle(input)).toStrictEqual(output);
+    expect(parseTitle({title:input})).toStrictEqual(output);
   });
 });
