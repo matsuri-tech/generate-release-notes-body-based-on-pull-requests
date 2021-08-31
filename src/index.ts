@@ -186,7 +186,7 @@ async function run() {
           .join("\n\n")
       ),
     });
-  } catch (error) {
+  } catch (error: any) {
     core.setFailed(error.message);
   }
 }
