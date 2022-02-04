@@ -19,6 +19,17 @@ const data = [
       description: "description",
     },
   },
+  {
+    description: "correctly parse commit messages with multiple colons",
+    input:
+      "fix: `writing-mode: vertical-rl` bug on Safari, : to : has :: in it",
+    output: {
+      prefix: "fix",
+      scope: undefined,
+      description:
+        "`writing-mode: vertical-rl` bug on Safari, : to : has :: in it",
+    },
+  },
 ];
 
 data.forEach(({ description, input, output }) => {

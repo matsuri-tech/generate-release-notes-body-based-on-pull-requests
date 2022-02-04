@@ -5,7 +5,7 @@ export const parseTitle = (
   scope?: string;
   description: string;
 } => {
-  const [label, description] = title.split(":");
+  const [label, description] = title.split(/:+(.*)/);
   const [prefix, scope] = label.split(/\(|\)/);
   return {
     prefix,
