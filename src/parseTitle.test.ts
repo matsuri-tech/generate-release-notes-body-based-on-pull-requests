@@ -1,4 +1,4 @@
-import { parseTitle } from "./parseTitle";
+import { parseTitle, PARSE_TITLE_INVALID_FORMAT_ERROR } from "./parseTitle";
 
 const data = [
   {
@@ -25,4 +25,10 @@ data.forEach(({ description, input, output }) => {
   test(description, () => {
     expect(parseTitle(input)).toStrictEqual(output);
   });
+});
+
+test("throw an error if the format is invalid", () => {
+  expect(() => {
+    parseTitle("Feat #1223");
+  }).toThrow(PARSE_TITLE_INVALID_FORMAT_ERROR);
 });
