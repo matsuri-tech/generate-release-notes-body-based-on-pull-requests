@@ -8,7 +8,7 @@ export const parseTitle = (
   scope?: string;
   description: string;
 } => {
-  const [label, description] = title.split(":");
+  const [label, description] = title.split(/:+(.*)/);
 
   if (description === undefined) {
     throw new Error(PARSE_TITLE_INVALID_FORMAT_ERROR);
