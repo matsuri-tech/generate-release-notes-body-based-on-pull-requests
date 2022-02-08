@@ -18,7 +18,7 @@ async function run() {
       throw new Error("This action only runs for pull request.");
     }
 
-    const current = await octokit.pulls.get({
+    const current = await octokit.rest.pulls.get({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
     });
@@ -32,7 +32,7 @@ async function run() {
       return;
     }
 
-    const pulls = await octokit.pulls.list({
+    const pulls = await octokit.rest.pulls.list({
       ...context.repo,
       state: "closed",
       per_page: 100,
@@ -171,7 +171,7 @@ async function run() {
 
     console.log("generated source", ":", JSON.stringify(sections, null, 2));
 
-    await octokit.pulls.update({
+    await octokit.rest.pulls.update({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
       body: mergeBody(
@@ -186,7 +186,7 @@ async function run() {
           .join("\n\n")
       ),
     });
-  } catch (error) {
+  } catch (error: any) {
     core.setFailed(error.message);
   }
 }

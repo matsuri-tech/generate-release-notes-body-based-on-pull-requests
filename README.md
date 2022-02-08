@@ -58,6 +58,16 @@ prefixで作業内容分類、scopeで作業箇所の分類、descriptionで作�
 
 詳細はconventional commitで検索すること。
 
+## Release PullRequestの作り方
+
+PullRequestのタイトルが、RELEASE_PREFIX（デフォルトではRelase Note）にマッチすれば、Release PullRequestとして判定されます。
+
+フォーマットが決まっているのであれば、Github CLIを使うと便利です。以下のようにワンライナーでいけます。
+
+```command
+gh pr create --base deploy --head master --title "Release Note: $(date '+%Y/%m/%d')" --body "" --reviewer [REVIEWER_NAME]
+```
+
 ## やっていないこと
 
 - PRのタイトルに使用できるPrefixの設定

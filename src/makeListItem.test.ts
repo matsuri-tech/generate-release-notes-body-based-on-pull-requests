@@ -7,9 +7,9 @@ const data = [
       scope: "scope",
       description: "description",
       head_ref: "feat/#2",
-      html_url: "https://example.com"
+      html_url: "https://example.com",
     },
-    output: `* **scope**: description ([feat/#2](https://example.com))`
+    output: `* **scope**: description ([feat/#2](https://example.com))`,
   },
   {
     description: "no scope conventional commit",
@@ -17,9 +17,19 @@ const data = [
       scope: undefined,
       description: "description",
       head_ref: "feat/#2",
-      html_url: "https://example.com"
+      html_url: "https://example.com",
     },
     output: `* description ([feat/#2](https://example.com))`,
+  },
+  {
+    description: "escape html tags",
+    input: {
+      scope: undefined,
+      description: "use <ul/> instead of <div/>",
+      head_ref: "feat/#2",
+      html_url: "https://example.com",
+    },
+    output: `* use &lt;ul/&gt; instead of &lt;div/\&gt; ([feat/#2](https://example.com))`,
   },
 ];
 
