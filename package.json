@@ -1,6 +1,6 @@
 {
   "name": "generate-release-notes-body-based-on-pull-requests",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Generate Release note's body based on pull requests",
   "main": "index.js",
   "scripts": {
