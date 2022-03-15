@@ -8444,10 +8444,10 @@ function run() {
             }
             const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
-            if ((0, isValidTitle_1.isValidTitle)(current.data.title) === false) {
-                throw new Error("This pull request is an invalid format.");
-            }
             if (RELEASE_PREFIX !== (0, parseTitle_1.parseTitle)(current.data.title).prefix) {
+                if ((0, isValidTitle_1.isValidTitle)(current.data.title) === false) {
+                    throw new Error("This pull request is an invalid format.");
+                }
                 core.warning(`This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`);
                 return;
             }

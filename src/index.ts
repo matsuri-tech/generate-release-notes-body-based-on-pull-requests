@@ -25,11 +25,11 @@ async function run() {
 
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
 
-    if (isValidTitle(current.data.title) === false) {
-      throw new Error("This pull request is an invalid format.");
-    }
-
     if (RELEASE_PREFIX !== parseTitle(current.data.title).prefix) {
+      if (isValidTitle(current.data.title) === false) {
+        throw new Error("This pull request is an invalid format.");
+      }
+
       core.warning(
         `This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`
       );
