@@ -8,5 +8,5 @@ inputs:
     description: 'Please specify the prefix to use for the title of Release pull request.'
     default: 'Release Note'
 runs:
-  using: 'node18'
+  using: 'node16'
   main: 'dist/index.js'
