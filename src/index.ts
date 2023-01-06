@@ -78,7 +78,7 @@ async function run() {
       },
     };
 
-    pulls.some((pull) => {
+    pulls.map((pull) => {
       if (isValidTitle(pull.title) === false) {
         console.log(
           pull.title,
