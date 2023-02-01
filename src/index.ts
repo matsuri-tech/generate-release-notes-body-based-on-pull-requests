@@ -135,12 +135,42 @@ async function run() {
 
     console.log("generated source", ":", JSON.stringify(sections, null, 2));
 
+    const getPrev = async () => {
+      const pulls = await octokit.rest.pulls.list({
+        ...context.repo,
+        state: "closed",
+        per_page: 100,
+      });
+
+      type PR = typeof pulls.data[number];
+      type MergedPR = PR & { merged_at: string };
+      const prev = pulls.data
+        .filter((pull): pull is MergedPR => {
+          return pull.merged_at !== null;
+        })
+        .sort((prev, next) => {
+          return Number(next.merged_at) - Number(prev.merged_at);
+        })
+        .find((pull) => {
+          return pull.title.startsWith(RELEASE_PREFIX);
+        });
+
+      return prev;
+    };
+
+    const prev = await getPrev();
+
     await octokit.rest.pulls.update({
       ...context.repo,
       pull_number: context.payload.pull_request.number,
       body: mergeBody(
         context.payload.pull_request.body,
-        [START_COMMENT_OUT, makeBody(sections), END_COMMENT_OUT]
+        [
+          START_COMMENT_OUT,
+          makeBody(sections),
+          prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+          END_COMMENT_OUT,
+        ]
           .filter(Boolean)
           .join("\n\n")
       ),
