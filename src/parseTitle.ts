@@ -17,8 +17,8 @@ export const parseTitle = (
   const [prefix, scope] = label.split(/\(|\)/);
 
   return {
-    prefix,
-    scope,
+    prefix: prefix.trim(),
+    scope: scope?.trim(),
     description: description.trim(),
   };
 };
