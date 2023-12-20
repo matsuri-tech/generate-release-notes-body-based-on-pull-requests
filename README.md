@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: matsuri-tech/generate-release-notes-body-based-on-pull-requests@v1
+    - uses: matsuri-tech/generate-release-notes-body-based-on-pull-requests@v2
       with:
         # 必須。
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
