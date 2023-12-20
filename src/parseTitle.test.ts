@@ -30,6 +30,15 @@ const data = [
         "`writing-mode: vertical-rl` bug on Safari, : to : has :: in it",
     },
   },
+  {
+    description: "Release pull request",
+    input: " Release Note: 2023-01-01",
+    output: {
+      prefix: "Release Note",
+      scope: undefined,
+      description: "2023-01-01",
+    },
+  },
 ];
 
 data.forEach(({ description, input, output }) => {
