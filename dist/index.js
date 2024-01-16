@@ -29013,6 +29013,7 @@ function run() {
                 return;
             }
             const commits = yield octokit.rest.pulls.listCommits(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
+            core.debug("commits.data: " + JSON.stringify(commits.data, null, 2));
             const pulls = yield Promise.all(commits.data
                 .filter((commit) => {
                 return commit.commit.message.startsWith("Merge pull request");
