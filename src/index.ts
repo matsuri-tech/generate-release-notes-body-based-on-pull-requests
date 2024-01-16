@@ -6,6 +6,34 @@ import { mergeBody } from "./mergeBody";
 import { isValidTitle } from "./isValidTitle";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 
+const getAllCommits = async (
+  octokit: ReturnType<typeof github.getOctokit>,
+  repository: {
+    owner: string;
+    repo: string;
+  },
+  pull_number: number
+) => {
+  const commits = [];
+  let hasMorePages = true;
+  let page = 0;
+
+  while (hasMorePages) {
+    const data = await octokit.rest.pulls.listCommits({
+      ...repository,
+      pull_number,
+      page,
+      per_page: 100,
+    });
+    commits.push(...data.data);
+
+    hasMorePages = data.data.length === 100;
+    page++;
+  }
+
+  return commits;
+};
+
 async function run() {
   try {
     const GITHUB_TOKEN = core.getInput("GITHUB_TOKEN");
@@ -36,13 +64,14 @@ async function run() {
       return;
     }
 
-    const commits = await octokit.rest.pulls.listCommits({
-      ...context.repo,
-      pull_number: context.payload.pull_request.number,
-    });
+    const commits = await getAllCommits(
+      octokit,
+      context.repo,
+      current.data.number
+    );
 
     const pulls = await Promise.all(
-      commits.data
+      commits
         .filter((commit) => {
           return commit.commit.message.startsWith("Merge pull request");
         })
@@ -142,7 +171,7 @@ async function run() {
         per_page: 100,
       });
 
-      type PR = typeof pulls.data[number];
+      type PR = (typeof pulls.data)[number];
       type MergedPR = PR & { merged_at: string };
       const prev = pulls.data
         .filter((pull): pull is MergedPR => {
