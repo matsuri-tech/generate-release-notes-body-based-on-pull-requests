@@ -6,14 +6,22 @@ jobs:
   units:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - run: npm ci
-    - run: npm test
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run typecheck
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: ./
-      with:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RELEASE_PREFIX: 'Release Note'
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_PREFIX: "Release Note"
