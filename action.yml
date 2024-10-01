@@ -1,12 +1,12 @@
-name: 'generate-release-notes-body-based-on-pull-requests'
-description: 'Generate Release notes body based on pull requests'
+name: "generate-release-notes-body-based-on-pull-requests"
+description: "Generate Release notes body based on pull requests"
 inputs:
   GITHUB_TOKEN:
-    description: 'Set GITHUB_TOKEN'
+    description: "Set GITHUB_TOKEN"
     required: true
   RELEASE_PREFIX:
-    description: 'Please specify the prefix to use for the title of Release pull request.'
-    default: 'Release Note'
+    description: "Please specify the prefix to use for the title of Release pull request."
+    default: "Release Note"
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
+  using: "node20"
+  main: "dist/index.js"
