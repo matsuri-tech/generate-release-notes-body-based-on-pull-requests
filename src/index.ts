@@ -64,6 +64,12 @@ async function run() {
       return;
     }
 
+    await octokit.rest.issues.addLabels({
+      ...context.repo,
+      issue_number: context.payload.pull_request.number,
+      labels: ["release"],
+    });
+
     const commits = await getAllCommits(
       octokit,
       context.repo,
