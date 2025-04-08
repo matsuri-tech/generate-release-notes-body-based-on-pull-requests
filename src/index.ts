@@ -52,6 +52,7 @@ async function run() {
     });
 
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
+    const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
 
     if (RELEASE_PREFIX !== parseTitle(current.data.title).prefix) {
       if (isValidTitle(current.data.title) === false) {
@@ -62,6 +63,16 @@ async function run() {
         `This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`
       );
       return;
+    }
+
+    try {
+      await octokit.rest.issues.addLabels({
+        ...context.repo,
+        issue_number: context.payload.pull_request.number,
+        labels: [RELEASE_LABEL],
+      });
+    } catch (error: any) {
+      core.warning(`Failed to add release label: ${error.message}`);
     }
 
     const commits = await getAllCommits(

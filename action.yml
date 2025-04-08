@@ -7,6 +7,9 @@ inputs:
   RELEASE_PREFIX:
     description: "Please specify the prefix to use for the title of Release pull request."
     default: "Release Note"
+  RELEASE_LABEL:
+    description: "Label to be added to release pull requests."
+    default: "release"
 runs:
   using: "node20"
   main: "dist/index.js"
