@@ -1,0 +1,55 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# リポジトリ構成
+
+このリポジトリは、GitHubのプルリクエストからリリースノートの本文を生成するためのツールです。
+
+## 主要な機能
+
+- プルリクエストのタイトルを解析し、変更内容を分類
+- プルリクエストの本文からBREAKING CHANGEを抽出
+- リリースノートの本文を自動生成
+- 前回のリリースへのリンクを自動追加
+
+## ファイル構成
+
+### コアファイル
+
+- `index.ts`: メインの処理を実装
+  - プルリクエストの取得と解析
+  - コミット履歴の取得
+  - リリースノート本文の生成と更新
+
+### ユーティリティファイル
+
+- `parseTitle.ts`: プルリクエストのタイトルを解析
+- `isValidTitle.ts`: タイトルの形式を検証
+- `makeBody.ts`: リリースノートの本文を生成
+- `makeListItem.ts`: 変更項目のリストアイテムを生成
+- `mergeBody.ts`: 既存の本文と新しい本文をマージ
+- `escapeHtmlTags.ts`: HTMLタグをエスケープ
+
+### 型定義
+
+- `types.d.ts`: セクションの型定義
+  - `Sections`: リリースノートのセクション構造を定義
+
+### 定数
+
+- `constants.ts`: 定数を定義
+  - `START_COMMENT_OUT`: リリースノートの開始マーカー
+  - `END_COMMENT_OUT`: リリースノートの終了マーカー
+
+## テスト
+
+各機能に対応するテストファイルが用意されています：
+
+- `parseTitle.test.ts`
+- `isValidTitle.test.ts`
+- `makeBody.test.ts`
+- `makeListItem.test.ts`
+- `mergeBody.test.ts`
+- `escapeHtmlTags.test.ts`
