@@ -30053,6 +30053,12 @@ function run() {
                 core.warning(`Failed to add release label: ${error.message}`);
             }
             const commits = yield getAllCommits(octokit, context.repo, current.data.number);
+            core.debug(`Fetched commits count: ${commits.length}`);
+            if (core.isDebug()) {
+                core.debug(`Commits: ${JSON.stringify(commits.map((commit) => {
+                    return commit.commit.message;
+                }), null, 2)}`);
+            }
             const pulls = yield Promise.all(commits
                 .filter((commit) => {
                 return commit.commit.message.startsWith("Merge pull request");
@@ -30062,6 +30068,7 @@ function run() {
                 const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: pull_number }));
                 return current.data;
             })));
+            core.debug(`Detected commits count: ${pulls.length}`);
             const sections = {
                 breakings: {
                     heading: "BREAKING CHANGES",
@@ -30082,6 +30089,7 @@ function run() {
             };
             pulls.map((pull) => {
                 var _a;
+                core.debug(`checking ${pull.title}`);
                 if ((0, isValidTitle_1.isValidTitle)(pull.title) === false) {
                     console.log(pull.title, ":", "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts");
                     return false;
@@ -30101,13 +30109,13 @@ function run() {
                 if (["feat", "fix"].includes(prefix)) {
                     sections[prefix].contents.unshift(Object.assign({ scope,
                         description }, identifier));
+                    // other prefixes
                 }
-                // other prefixes
-                if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
+                else if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
                     sections.others.contents.unshift(Object.assign({ scope: scope || prefix, description }, identifier));
+                    // chore prefix
                 }
-                // chore prefix
-                if (["chore"].includes(prefix)) {
+                else if (["chore"].includes(prefix)) {
                     sections.others.contents.unshift(Object.assign({ scope,
                         description }, identifier));
                 }
