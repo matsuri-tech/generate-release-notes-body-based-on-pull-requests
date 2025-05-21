@@ -169,9 +169,8 @@ async function run() {
           description,
           ...identifier,
         });
-      }
-      // other prefixes
-      if (
+        // other prefixes
+      } else if (
         ["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)
       ) {
         sections.others.contents.unshift({
@@ -179,9 +178,8 @@ async function run() {
           description,
           ...identifier,
         });
-      }
-      // chore prefix
-      if (["chore"].includes(prefix)) {
+        // chore prefix
+      } else if (["chore"].includes(prefix)) {
         sections.others.contents.unshift({
           scope,
           description,
