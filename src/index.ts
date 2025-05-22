@@ -81,6 +81,19 @@ async function run() {
       current.data.number
     );
 
+    core.debug(`Fetched commits count: ${commits.length}`);
+    if (core.isDebug()) {
+      core.debug(
+        `Commits: ${JSON.stringify(
+          commits.map((commit) => {
+            return commit.commit.message;
+          }),
+          null,
+          2
+        )}`
+      );
+    }
+
     const pulls = await Promise.all(
       commits
         .filter((commit) => {
@@ -98,6 +111,8 @@ async function run() {
           return current.data;
         })
     );
+
+    core.debug(`Detected commits count: ${pulls.length}`);
 
     const sections: Sections = {
       breakings: {
@@ -119,6 +134,8 @@ async function run() {
     };
 
     pulls.map((pull) => {
+      core.debug(`checking ${pull.title}`);
+
       if (isValidTitle(pull.title) === false) {
         console.log(
           pull.title,
@@ -152,9 +169,8 @@ async function run() {
           description,
           ...identifier,
         });
-      }
-      // other prefixes
-      if (
+        // other prefixes
+      } else if (
         ["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)
       ) {
         sections.others.contents.unshift({
@@ -162,9 +178,8 @@ async function run() {
           description,
           ...identifier,
         });
-      }
-      // chore prefix
-      if (["chore"].includes(prefix)) {
+        // chore prefix
+      } else if (["chore"].includes(prefix)) {
         sections.others.contents.unshift({
           scope,
           description,
