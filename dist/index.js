@@ -29959,6 +29959,73 @@ exports.escapeHtmlTags = escapeHtmlTags;
 
 /***/ }),
 
+/***/ 1163:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.groupPullsBySemantic = void 0;
+const isValidTitle_1 = __nccwpck_require__(3799);
+const parseTitle_1 = __nccwpck_require__(6464);
+const groupPullsBySemantic = (pulls) => {
+    const sections = {
+        breakings: {
+            heading: "BREAKING CHANGES",
+            contents: [],
+        },
+        feat: {
+            heading: "Features",
+            contents: [],
+        },
+        fix: {
+            heading: "Fixtures",
+            contents: [],
+        },
+        others: {
+            heading: "Others",
+            contents: [],
+        },
+    };
+    pulls.map((pull) => {
+        var _a;
+        if ((0, isValidTitle_1.isValidTitle)(pull.title) === false) {
+            console.log(pull.title, ":", "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts");
+            return false;
+        }
+        const { prefix, scope, description } = (0, parseTitle_1.parseTitle)(pull.title);
+        console.log(pull.title, ":", "parsed", "=>", prefix, scope, description);
+        // breaking changes
+        const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
+        const identifier = { head_ref: pull.head.ref, html_url: pull.html_url };
+        if (breakings) {
+            breakings.map((breaking) => {
+                const { description } = (0, parseTitle_1.parseTitle)(breaking);
+                sections.breakings.contents.unshift(Object.assign({ description }, identifier));
+            });
+        }
+        // main prefixes
+        if (["feat", "fix"].includes(prefix)) {
+            sections[prefix].contents.unshift(Object.assign({ scope,
+                description }, identifier));
+            // other prefixes
+        }
+        else if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
+            sections.others.contents.unshift(Object.assign({ scope: scope || prefix, description }, identifier));
+            // chore prefix
+        }
+        else if (["chore"].includes(prefix)) {
+            sections.others.contents.unshift(Object.assign({ scope,
+                description }, identifier));
+        }
+    });
+    return sections;
+};
+exports.groupPullsBySemantic = groupPullsBySemantic;
+
+
+/***/ }),
+
 /***/ 9407:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -30014,10 +30081,11 @@ const makeBody_1 = __nccwpck_require__(5477);
 const mergeBody_1 = __nccwpck_require__(5463);
 const isValidTitle_1 = __nccwpck_require__(3799);
 const constants_1 = __nccwpck_require__(7242);
+const groupPullsBySemantic_1 = __nccwpck_require__(1163);
 const getAllCommits = (octokit, repository, pull_number) => __awaiter(void 0, void 0, void 0, function* () {
     const commits = [];
     let hasMorePages = true;
-    let page = 0;
+    let page = 1;
     while (hasMorePages) {
         const data = yield octokit.rest.pulls.listCommits(Object.assign(Object.assign({}, repository), { pull_number,
             page, per_page: 100 }));
@@ -30037,9 +30105,10 @@ function run() {
                 throw new Error("This action only runs for pull request.");
             }
             const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
+            const currrentTitle = (0, parseTitle_1.parseTitle)(current.data.title);
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
             const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
-            if (RELEASE_PREFIX !== (0, parseTitle_1.parseTitle)(current.data.title).prefix) {
+            if (RELEASE_PREFIX !== currrentTitle.prefix) {
                 if ((0, isValidTitle_1.isValidTitle)(current.data.title) === false) {
                     throw new Error("This pull request is an invalid format.");
                 }
@@ -30052,94 +30121,47 @@ function run() {
             catch (error) {
                 core.warning(`Failed to add release label: ${error.message}`);
             }
-            const commits = yield getAllCommits(octokit, context.repo, current.data.number);
-            core.debug(`Fetched commits count: ${commits.length}`);
-            if (core.isDebug()) {
-                core.debug(`Commits: ${JSON.stringify(commits.map((commit) => {
-                    return commit.commit.message;
-                }), null, 2)}`);
-            }
-            const pulls = yield Promise.all(commits
-                .filter((commit) => {
-                return commit.commit.message.startsWith("Merge pull request");
+            const mergedPulls = (yield octokit.rest.pulls.list(Object.assign(Object.assign({}, context.repo), { state: "closed", per_page: 100 }))).data
+                .filter((pull) => {
+                return !!pull.merged_at;
             })
-                .map((commit) => __awaiter(this, void 0, void 0, function* () {
-                const pull_number = parseInt(commit.commit.message.split("#")[1].split(" ")[0], 10);
-                const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: pull_number }));
-                return current.data;
-            })));
-            core.debug(`Detected commits count: ${pulls.length}`);
-            const sections = {
-                breakings: {
-                    heading: "BREAKING CHANGES",
-                    contents: [],
-                },
-                feat: {
-                    heading: "Features",
-                    contents: [],
-                },
-                fix: {
-                    heading: "Fixtures",
-                    contents: [],
-                },
-                others: {
-                    heading: "Others",
-                    contents: [],
-                },
-            };
-            pulls.map((pull) => {
-                var _a;
-                core.debug(`checking ${pull.title}`);
-                if ((0, isValidTitle_1.isValidTitle)(pull.title) === false) {
-                    console.log(pull.title, ":", "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts");
-                    return false;
-                }
-                const { prefix, scope, description } = (0, parseTitle_1.parseTitle)(pull.title);
-                console.log(pull.title, ":", "parsed", "=>", prefix, scope, description);
-                // breaking changes
-                const breakings = (_a = pull.body) === null || _a === void 0 ? void 0 : _a.match(/^BREAKING CHANGE.*/gm);
-                const identifier = { head_ref: pull.head.ref, html_url: pull.html_url };
-                if (breakings) {
-                    breakings.map((breaking) => {
-                        const { description } = (0, parseTitle_1.parseTitle)(breaking);
-                        sections.breakings.contents.unshift(Object.assign({ description }, identifier));
-                    });
-                }
-                // main prefixes
-                if (["feat", "fix"].includes(prefix)) {
-                    sections[prefix].contents.unshift(Object.assign({ scope,
-                        description }, identifier));
-                    // other prefixes
-                }
-                else if (["build", "ci", "perf", "test", "refactor", "docs"].includes(prefix)) {
-                    sections.others.contents.unshift(Object.assign({ scope: scope || prefix, description }, identifier));
-                    // chore prefix
-                }
-                else if (["chore"].includes(prefix)) {
-                    sections.others.contents.unshift(Object.assign({ scope,
-                        description }, identifier));
-                }
+                .sort((prev, next) => {
+                return Number(next.merged_at) - Number(prev.merged_at);
             });
-            console.log("generated source", ":", JSON.stringify(sections, null, 2));
-            const getPrev = () => __awaiter(this, void 0, void 0, function* () {
-                const pulls = yield octokit.rest.pulls.list(Object.assign(Object.assign({}, context.repo), { state: "closed", per_page: 100 }));
-                const prev = pulls.data
-                    .filter((pull) => {
-                    return pull.merged_at !== null;
-                })
-                    .sort((prev, next) => {
-                    return Number(next.merged_at) - Number(prev.merged_at);
-                })
-                    .find((pull) => {
-                    return pull.title.startsWith(RELEASE_PREFIX);
-                });
-                return prev;
+            const prevPullIndex = mergedPulls.findIndex((pull) => {
+                return pull.title.startsWith(RELEASE_PREFIX);
             });
-            const prev = yield getPrev();
+            const prevPull = mergedPulls[prevPullIndex];
+            const targetPulls = [];
+            if (currrentTitle.description.startsWith("v")) {
+                // tagによる管理がされている場合:
+                // ex.) Release Note: v2.0.2
+                // 前回のRelease NoteまでにマージされたPRを対象にする
+                targetPulls.push(...mergedPulls.slice(0, prevPullIndex));
+            }
+            else {
+                // ブランチによる管理がされている場合：
+                // ex.) Release Note: 2025-02-01
+                // 今回のRelease Noteに含まれてるコミットから対象となるPRを特定する
+                const commits = yield getAllCommits(octokit, context.repo, current.data.number);
+                const filterdCommits = yield Promise.all(commits
+                    .filter((commit) => {
+                    return commit.commit.message.startsWith("Merge pull request");
+                })
+                    .map((commit) => __awaiter(this, void 0, void 0, function* () {
+                    const pull_number = parseInt(commit.commit.message.split("#")[1].split(" ")[0], 10);
+                    const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: pull_number }));
+                    return current.data;
+                })));
+                targetPulls.push(...filterdCommits);
+            }
+            const sections = (0, groupPullsBySemantic_1.groupPullsBySemantic)(targetPulls);
             yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: (0, mergeBody_1.mergeBody)(context.payload.pull_request.body, [
                     constants_1.START_COMMENT_OUT,
                     (0, makeBody_1.makeBody)(sections),
-                    prev ? `**Prev**: [${prev.title}](${prev.html_url})` : null,
+                    prevPull
+                        ? `**Prev**: [${prevPull.title}](${prevPull.html_url})`
+                        : null,
                     constants_1.END_COMMENT_OUT,
                 ]
                     .filter(Boolean)
