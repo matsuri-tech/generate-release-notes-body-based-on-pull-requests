@@ -1,4 +1,129 @@
-import { matchesPathFilter } from "./pathFilter";
+import { getChangedFilesForPR, getChangedFilesForPRsBatch, matchesPathFilter } from "./pathFilter";
+
+// Mock the octokit object for testing
+const mockOctokit = {
+  rest: {
+    pulls: {
+      listFiles: jest.fn(),
+    },
+  },
+  graphql: jest.fn(),
+} as any;
+
+const mockRepository = {
+  owner: 'test-owner',
+  repo: 'test-repo',
+};
+
+describe("pathFilter", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("getChangedFilesForPR", () => {
+    test("should return files from a single PR", async () => {
+      mockOctokit.rest.pulls.listFiles.mockResolvedValue({
+        data: [
+          { filename: 'src/index.ts' },
+          { filename: 'src/utils.ts' },
+        ],
+      });
+
+      const files = await getChangedFilesForPR(mockOctokit, mockRepository, 123);
+      
+      expect(files).toEqual(['src/index.ts', 'src/utils.ts']);
+      expect(mockOctokit.rest.pulls.listFiles).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        pull_number: 123,
+        page: 1,
+        per_page: 100,
+      });
+    });
+
+    test("should handle pagination", async () => {
+      mockOctokit.rest.pulls.listFiles
+        .mockResolvedValueOnce({
+          data: Array(100).fill(0).map((_, i) => ({ filename: `file${i}.ts` })),
+        })
+        .mockResolvedValueOnce({
+          data: [{ filename: 'final.ts' }],
+        });
+
+      const files = await getChangedFilesForPR(mockOctokit, mockRepository, 123);
+      
+      expect(files).toHaveLength(101);
+      expect(files[0]).toBe('file0.ts');
+      expect(files[100]).toBe('final.ts');
+      expect(mockOctokit.rest.pulls.listFiles).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("getChangedFilesForPRsBatch", () => {
+    test("should return empty object for empty input", async () => {
+      const result = await getChangedFilesForPRsBatch(mockOctokit, mockRepository, []);
+      expect(result).toEqual({});
+      expect(mockOctokit.graphql).not.toHaveBeenCalled();
+    });
+
+    test("should fetch multiple PRs using GraphQL", async () => {
+      const mockGraphQLResponse = {
+        repository: {
+          pr0: {
+            number: 123,
+            files: {
+              nodes: [
+                { path: 'src/index.ts' },
+                { path: 'src/utils.ts' },
+              ],
+              pageInfo: { hasNextPage: false }
+            }
+          },
+          pr1: {
+            number: 124,
+            files: {
+              nodes: [
+                { path: 'tests/test.ts' },
+              ],
+              pageInfo: { hasNextPage: false }
+            }
+          }
+        }
+      };
+
+      mockOctokit.graphql.mockResolvedValue(mockGraphQLResponse);
+
+      const result = await getChangedFilesForPRsBatch(mockOctokit, mockRepository, [123, 124]);
+      
+      expect(result).toEqual({
+        123: ['src/index.ts', 'src/utils.ts'],
+        124: ['tests/test.ts'],
+      });
+      expect(mockOctokit.graphql).toHaveBeenCalledTimes(1);
+    });
+
+    test("should fallback to REST API when GraphQL fails", async () => {
+      mockOctokit.graphql.mockRejectedValue(new Error('GraphQL failed'));
+      mockOctokit.rest.pulls.listFiles
+        .mockResolvedValueOnce({ data: [{ filename: 'file1.ts' }] })
+        .mockResolvedValueOnce({ data: [{ filename: 'file2.ts' }] });
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = await getChangedFilesForPRsBatch(mockOctokit, mockRepository, [123, 124]);
+      
+      expect(result).toEqual({
+        123: ['file1.ts'],
+        124: ['file2.ts'],
+      });
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'GraphQL batch request failed, falling back to individual requests:',
+        expect.any(Error)
+      );
+      
+      consoleSpy.mockRestore();
+    });
+  });
 
 describe("matchesPathFilter", () => {
   test("should return true when no filters are provided", () => {
@@ -54,4 +179,5 @@ describe("matchesPathFilter", () => {
     const filters = ["src/", "lib/"];
     expect(matchesPathFilter(files, filters)).toBe(false);
   });
+});
 });

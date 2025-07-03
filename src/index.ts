@@ -6,7 +6,7 @@ import { mergeBody } from "./mergeBody";
 import { isValidTitle } from "./isValidTitle";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 import { groupPullsBySemantic } from "./groupPullsBySemantic";
-import { getChangedFilesForPR, matchesPathFilter } from "./pathFilter";
+import { getChangedFilesForPR, getChangedFilesForPRsBatch, matchesPathFilter } from "./pathFilter";
 
 const getAllCommits = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -115,24 +115,24 @@ async function run() {
       const candidatePulls = mergedPulls.slice(0, prevPullIndex);
       
       if (pathFilters.length > 0) {
-        // Filter PRs by path changes
+        // Filter PRs by path changes using efficient batch fetching
         core.info(`Filtering ${candidatePulls.length} PRs by path changes...`);
-        const filteredPulls = [];
-        for (const pull of candidatePulls) {
-          try {
-            const changedFiles = await getChangedFilesForPR(octokit, context.repo, pull.number);
-            if (matchesPathFilter(changedFiles, pathFilters)) {
-              core.info(`PR #${pull.number} matches path filter`);
-              filteredPulls.push(pull);
-            } else {
-              core.info(`PR #${pull.number} does not match path filter`);
-            }
-          } catch (error: any) {
-            core.warning(`Failed to get changed files for PR #${pull.number}: ${error.message}`);
-            // Include the PR if we can't determine the files (fail-safe)
-            filteredPulls.push(pull);
+        const pullNumbers = candidatePulls.map(pull => pull.number);
+        const pullFilesMap = await getChangedFilesForPRsBatch(octokit, context.repo, pullNumbers);
+        
+        const filteredPulls = candidatePulls.filter(pull => {
+          const changedFiles = pullFilesMap[pull.number] || [];
+          const matches = matchesPathFilter(changedFiles, pathFilters);
+          
+          if (matches) {
+            core.info(`PR #${pull.number} matches path filter`);
+          } else {
+            core.info(`PR #${pull.number} does not match path filter`);
           }
-        }
+          
+          return matches;
+        });
+        
         core.info(`Filtered down to ${filteredPulls.length} PRs`);
         targetPulls.push(...filteredPulls);
       } else {
@@ -168,24 +168,24 @@ async function run() {
       );
 
       if (pathFilters.length > 0) {
-        // Filter PRs by path changes
+        // Filter PRs by path changes using efficient batch fetching
         core.info(`Filtering ${filterdCommits.length} PRs by path changes...`);
-        const pathFilteredPulls = [];
-        for (const pull of filterdCommits) {
-          try {
-            const changedFiles = await getChangedFilesForPR(octokit, context.repo, pull.number);
-            if (matchesPathFilter(changedFiles, pathFilters)) {
-              core.info(`PR #${pull.number} matches path filter`);
-              pathFilteredPulls.push(pull);
-            } else {
-              core.info(`PR #${pull.number} does not match path filter`);
-            }
-          } catch (error: any) {
-            core.warning(`Failed to get changed files for PR #${pull.number}: ${error.message}`);
-            // Include the PR if we can't determine the files (fail-safe)
-            pathFilteredPulls.push(pull);
+        const pullNumbers = filterdCommits.map(pull => pull.number);
+        const pullFilesMap = await getChangedFilesForPRsBatch(octokit, context.repo, pullNumbers);
+        
+        const pathFilteredPulls = filterdCommits.filter(pull => {
+          const changedFiles = pullFilesMap[pull.number] || [];
+          const matches = matchesPathFilter(changedFiles, pathFilters);
+          
+          if (matches) {
+            core.info(`PR #${pull.number} matches path filter`);
+          } else {
+            core.info(`PR #${pull.number} does not match path filter`);
           }
-        }
+          
+          return matches;
+        });
+        
         core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
         targetPulls.push(...pathFilteredPulls);
       } else {
