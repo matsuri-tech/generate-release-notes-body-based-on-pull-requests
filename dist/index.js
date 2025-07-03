@@ -30082,6 +30082,7 @@ const mergeBody_1 = __nccwpck_require__(5463);
 const isValidTitle_1 = __nccwpck_require__(3799);
 const constants_1 = __nccwpck_require__(7242);
 const groupPullsBySemantic_1 = __nccwpck_require__(1163);
+const pathFilter_1 = __nccwpck_require__(9626);
 const getAllCommits = (octokit, repository, pull_number) => __awaiter(void 0, void 0, void 0, function* () {
     const commits = [];
     let hasMorePages = true;
@@ -30108,6 +30109,13 @@ function run() {
             const currrentTitle = (0, parseTitle_1.parseTitle)(current.data.title);
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
             const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
+            const PATH_FILTER = core.getInput("PATH_FILTER");
+            const pathFilters = PATH_FILTER
+                ? PATH_FILTER.split(",").map(filter => filter.trim()).filter(Boolean)
+                : [];
+            if (pathFilters.length > 0) {
+                core.info(`Path filters enabled: ${pathFilters.join(", ")}`);
+            }
             if (RELEASE_PREFIX !== currrentTitle.prefix) {
                 if ((0, isValidTitle_1.isValidTitle)(current.data.title) === false) {
                     throw new Error("This pull request is an invalid format.");
@@ -30137,7 +30145,34 @@ function run() {
                 // tagによる管理がされている場合:
                 // ex.) Release Note: v2.0.2
                 // 前回のRelease NoteまでにマージされたPRを対象にする
-                targetPulls.push(...mergedPulls.slice(0, prevPullIndex));
+                const candidatePulls = mergedPulls.slice(0, prevPullIndex);
+                if (pathFilters.length > 0) {
+                    // Filter PRs by path changes
+                    core.info(`Filtering ${candidatePulls.length} PRs by path changes...`);
+                    const filteredPulls = [];
+                    for (const pull of candidatePulls) {
+                        try {
+                            const changedFiles = yield (0, pathFilter_1.getChangedFilesForPR)(octokit, context.repo, pull.number);
+                            if ((0, pathFilter_1.matchesPathFilter)(changedFiles, pathFilters)) {
+                                core.info(`PR #${pull.number} matches path filter`);
+                                filteredPulls.push(pull);
+                            }
+                            else {
+                                core.info(`PR #${pull.number} does not match path filter`);
+                            }
+                        }
+                        catch (error) {
+                            core.warning(`Failed to get changed files for PR #${pull.number}: ${error.message}`);
+                            // Include the PR if we can't determine the files (fail-safe)
+                            filteredPulls.push(pull);
+                        }
+                    }
+                    core.info(`Filtered down to ${filteredPulls.length} PRs`);
+                    targetPulls.push(...filteredPulls);
+                }
+                else {
+                    targetPulls.push(...candidatePulls);
+                }
             }
             else {
                 // ブランチによる管理がされている場合：
@@ -30153,7 +30188,33 @@ function run() {
                     const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: pull_number }));
                     return current.data;
                 })));
-                targetPulls.push(...filterdCommits);
+                if (pathFilters.length > 0) {
+                    // Filter PRs by path changes
+                    core.info(`Filtering ${filterdCommits.length} PRs by path changes...`);
+                    const pathFilteredPulls = [];
+                    for (const pull of filterdCommits) {
+                        try {
+                            const changedFiles = yield (0, pathFilter_1.getChangedFilesForPR)(octokit, context.repo, pull.number);
+                            if ((0, pathFilter_1.matchesPathFilter)(changedFiles, pathFilters)) {
+                                core.info(`PR #${pull.number} matches path filter`);
+                                pathFilteredPulls.push(pull);
+                            }
+                            else {
+                                core.info(`PR #${pull.number} does not match path filter`);
+                            }
+                        }
+                        catch (error) {
+                            core.warning(`Failed to get changed files for PR #${pull.number}: ${error.message}`);
+                            // Include the PR if we can't determine the files (fail-safe)
+                            pathFilteredPulls.push(pull);
+                        }
+                    }
+                    core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
+                    targetPulls.push(...pathFilteredPulls);
+                }
+                else {
+                    targetPulls.push(...filterdCommits);
+                }
             }
             const sections = (0, groupPullsBySemantic_1.groupPullsBySemantic)(targetPulls);
             yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: (0, mergeBody_1.mergeBody)(context.payload.pull_request.body, [
@@ -30284,6 +30345,47 @@ const parseTitle = (title) => {
     };
 };
 exports.parseTitle = parseTitle;
+
+
+/***/ }),
+
+/***/ 9626:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.matchesPathFilter = exports.getChangedFilesForPR = void 0;
+const getChangedFilesForPR = (octokit, repository, pull_number) => __awaiter(void 0, void 0, void 0, function* () {
+    const files = [];
+    let hasMorePages = true;
+    let page = 1;
+    while (hasMorePages) {
+        const data = yield octokit.rest.pulls.listFiles(Object.assign(Object.assign({}, repository), { pull_number,
+            page, per_page: 100 }));
+        files.push(...data.data.map(file => file.filename));
+        hasMorePages = data.data.length === 100;
+        page++;
+    }
+    return files;
+});
+exports.getChangedFilesForPR = getChangedFilesForPR;
+const matchesPathFilter = (files, pathFilters) => {
+    if (pathFilters.length === 0) {
+        return true; // No filter specified, include all
+    }
+    return files.some(file => pathFilters.some(filter => file.startsWith(filter.trim())));
+};
+exports.matchesPathFilter = matchesPathFilter;
 
 
 /***/ }),

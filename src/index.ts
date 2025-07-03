@@ -6,6 +6,7 @@ import { mergeBody } from "./mergeBody";
 import { isValidTitle } from "./isValidTitle";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 import { groupPullsBySemantic } from "./groupPullsBySemantic";
+import { getChangedFilesForPR, matchesPathFilter } from "./pathFilter";
 
 const getAllCommits = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -56,6 +57,15 @@ async function run() {
 
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
     const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
+    const PATH_FILTER = core.getInput("PATH_FILTER");
+    
+    const pathFilters = PATH_FILTER 
+      ? PATH_FILTER.split(",").map(filter => filter.trim()).filter(Boolean)
+      : [];
+
+    if (pathFilters.length > 0) {
+      core.info(`Path filters enabled: ${pathFilters.join(", ")}`);
+    }
 
     if (RELEASE_PREFIX !== currrentTitle.prefix) {
       if (isValidTitle(current.data.title) === false) {
@@ -102,7 +112,32 @@ async function run() {
       // tagによる管理がされている場合:
       // ex.) Release Note: v2.0.2
       // 前回のRelease NoteまでにマージされたPRを対象にする
-      targetPulls.push(...mergedPulls.slice(0, prevPullIndex));
+      const candidatePulls = mergedPulls.slice(0, prevPullIndex);
+      
+      if (pathFilters.length > 0) {
+        // Filter PRs by path changes
+        core.info(`Filtering ${candidatePulls.length} PRs by path changes...`);
+        const filteredPulls = [];
+        for (const pull of candidatePulls) {
+          try {
+            const changedFiles = await getChangedFilesForPR(octokit, context.repo, pull.number);
+            if (matchesPathFilter(changedFiles, pathFilters)) {
+              core.info(`PR #${pull.number} matches path filter`);
+              filteredPulls.push(pull);
+            } else {
+              core.info(`PR #${pull.number} does not match path filter`);
+            }
+          } catch (error: any) {
+            core.warning(`Failed to get changed files for PR #${pull.number}: ${error.message}`);
+            // Include the PR if we can't determine the files (fail-safe)
+            filteredPulls.push(pull);
+          }
+        }
+        core.info(`Filtered down to ${filteredPulls.length} PRs`);
+        targetPulls.push(...filteredPulls);
+      } else {
+        targetPulls.push(...candidatePulls);
+      }
     } else {
       // ブランチによる管理がされている場合：
       // ex.) Release Note: 2025-02-01
@@ -132,7 +167,30 @@ async function run() {
           })
       );
 
-      targetPulls.push(...filterdCommits);
+      if (pathFilters.length > 0) {
+        // Filter PRs by path changes
+        core.info(`Filtering ${filterdCommits.length} PRs by path changes...`);
+        const pathFilteredPulls = [];
+        for (const pull of filterdCommits) {
+          try {
+            const changedFiles = await getChangedFilesForPR(octokit, context.repo, pull.number);
+            if (matchesPathFilter(changedFiles, pathFilters)) {
+              core.info(`PR #${pull.number} matches path filter`);
+              pathFilteredPulls.push(pull);
+            } else {
+              core.info(`PR #${pull.number} does not match path filter`);
+            }
+          } catch (error: any) {
+            core.warning(`Failed to get changed files for PR #${pull.number}: ${error.message}`);
+            // Include the PR if we can't determine the files (fail-safe)
+            pathFilteredPulls.push(pull);
+          }
+        }
+        core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
+        targetPulls.push(...pathFilteredPulls);
+      } else {
+        targetPulls.push(...filterdCommits);
+      }
     }
 
     const sections = groupPullsBySemantic(targetPulls);
