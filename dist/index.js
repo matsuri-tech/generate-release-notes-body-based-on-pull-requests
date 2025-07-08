@@ -30154,12 +30154,6 @@ function run() {
                     const filteredPulls = candidatePulls.filter(pull => {
                         const changedFiles = pullFilesMap[pull.number] || [];
                         const matches = (0, pathFilter_1.matchesPathFilter)(changedFiles, pathFilters);
-                        if (matches) {
-                            core.info(`PR #${pull.number} matches path filter`);
-                        }
-                        else {
-                            core.info(`PR #${pull.number} does not match path filter`);
-                        }
                         return matches;
                     });
                     core.info(`Filtered down to ${filteredPulls.length} PRs`);
@@ -30191,12 +30185,6 @@ function run() {
                     const pathFilteredPulls = filterdCommits.filter(pull => {
                         const changedFiles = pullFilesMap[pull.number] || [];
                         const matches = (0, pathFilter_1.matchesPathFilter)(changedFiles, pathFilters);
-                        if (matches) {
-                            core.info(`PR #${pull.number} matches path filter`);
-                        }
-                        else {
-                            core.info(`PR #${pull.number} does not match path filter`);
-                        }
                         return matches;
                     });
                     core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
