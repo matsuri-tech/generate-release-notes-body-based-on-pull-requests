@@ -124,12 +124,6 @@ async function run() {
           const changedFiles = pullFilesMap[pull.number] || [];
           const matches = matchesPathFilter(changedFiles, pathFilters);
           
-          if (matches) {
-            core.info(`PR #${pull.number} matches path filter`);
-          } else {
-            core.info(`PR #${pull.number} does not match path filter`);
-          }
-          
           return matches;
         });
         
@@ -176,12 +170,6 @@ async function run() {
         const pathFilteredPulls = filterdCommits.filter(pull => {
           const changedFiles = pullFilesMap[pull.number] || [];
           const matches = matchesPathFilter(changedFiles, pathFilters);
-          
-          if (matches) {
-            core.info(`PR #${pull.number} matches path filter`);
-          } else {
-            core.info(`PR #${pull.number} does not match path filter`);
-          }
           
           return matches;
         });
