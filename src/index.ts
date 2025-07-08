@@ -6,6 +6,7 @@ import { mergeBody } from "./mergeBody";
 import { isValidTitle } from "./isValidTitle";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
 import { groupPullsBySemantic } from "./groupPullsBySemantic";
+import { getChangedFilesForPR, getChangedFilesForPRsBatch, matchesPathFilter } from "./pathFilter";
 
 const getAllCommits = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -56,6 +57,15 @@ async function run() {
 
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
     const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
+    const PATH_FILTER = core.getInput("PATH_FILTER");
+    
+    const pathFilters = PATH_FILTER 
+      ? PATH_FILTER.split(",").map(filter => filter.trim()).filter(Boolean)
+      : [];
+
+    if (pathFilters.length > 0) {
+      core.info(`Path filters enabled: ${pathFilters.join(", ")}`);
+    }
 
     if (RELEASE_PREFIX !== currrentTitle.prefix) {
       if (isValidTitle(current.data.title) === false) {
@@ -102,7 +112,26 @@ async function run() {
       // tagによる管理がされている場合:
       // ex.) Release Note: v2.0.2
       // 前回のRelease NoteまでにマージされたPRを対象にする
-      targetPulls.push(...mergedPulls.slice(0, prevPullIndex));
+      const candidatePulls = mergedPulls.slice(0, prevPullIndex);
+      
+      if (pathFilters.length > 0) {
+        // Filter PRs by path changes using efficient batch fetching
+        core.info(`Filtering ${candidatePulls.length} PRs by path changes...`);
+        const pullNumbers = candidatePulls.map(pull => pull.number);
+        const pullFilesMap = await getChangedFilesForPRsBatch(octokit, context.repo, pullNumbers);
+        
+        const filteredPulls = candidatePulls.filter(pull => {
+          const changedFiles = pullFilesMap[pull.number] || [];
+          const matches = matchesPathFilter(changedFiles, pathFilters);
+          
+          return matches;
+        });
+        
+        core.info(`Filtered down to ${filteredPulls.length} PRs`);
+        targetPulls.push(...filteredPulls);
+      } else {
+        targetPulls.push(...candidatePulls);
+      }
     } else {
       // ブランチによる管理がされている場合：
       // ex.) Release Note: 2025-02-01
@@ -132,7 +161,24 @@ async function run() {
           })
       );
 
-      targetPulls.push(...filterdCommits);
+      if (pathFilters.length > 0) {
+        // Filter PRs by path changes using efficient batch fetching
+        core.info(`Filtering ${filterdCommits.length} PRs by path changes...`);
+        const pullNumbers = filterdCommits.map(pull => pull.number);
+        const pullFilesMap = await getChangedFilesForPRsBatch(octokit, context.repo, pullNumbers);
+        
+        const pathFilteredPulls = filterdCommits.filter(pull => {
+          const changedFiles = pullFilesMap[pull.number] || [];
+          const matches = matchesPathFilter(changedFiles, pathFilters);
+          
+          return matches;
+        });
+        
+        core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
+        targetPulls.push(...pathFilteredPulls);
+      } else {
+        targetPulls.push(...filterdCommits);
+      }
     }
 
     const sections = groupPullsBySemantic(targetPulls);

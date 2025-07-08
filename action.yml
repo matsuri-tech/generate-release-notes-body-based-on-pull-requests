@@ -10,6 +10,9 @@ inputs:
   RELEASE_LABEL:
     description: "Label to be added to release pull requests."
     default: "release"
+  PATH_FILTER:
+    description: "Filter PRs by file path changes. Comma-separated list of path patterns. Only PRs that modify files matching these patterns will be included."
+    required: false
 runs:
   using: "node20"
   main: "dist/index.js"

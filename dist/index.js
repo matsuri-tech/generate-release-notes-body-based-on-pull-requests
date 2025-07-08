@@ -30082,6 +30082,7 @@ const mergeBody_1 = __nccwpck_require__(5463);
 const isValidTitle_1 = __nccwpck_require__(3799);
 const constants_1 = __nccwpck_require__(7242);
 const groupPullsBySemantic_1 = __nccwpck_require__(1163);
+const pathFilter_1 = __nccwpck_require__(9626);
 const getAllCommits = (octokit, repository, pull_number) => __awaiter(void 0, void 0, void 0, function* () {
     const commits = [];
     let hasMorePages = true;
@@ -30108,6 +30109,13 @@ function run() {
             const currrentTitle = (0, parseTitle_1.parseTitle)(current.data.title);
             const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
             const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
+            const PATH_FILTER = core.getInput("PATH_FILTER");
+            const pathFilters = PATH_FILTER
+                ? PATH_FILTER.split(",").map(filter => filter.trim()).filter(Boolean)
+                : [];
+            if (pathFilters.length > 0) {
+                core.info(`Path filters enabled: ${pathFilters.join(", ")}`);
+            }
             if (RELEASE_PREFIX !== currrentTitle.prefix) {
                 if ((0, isValidTitle_1.isValidTitle)(current.data.title) === false) {
                     throw new Error("This pull request is an invalid format.");
@@ -30137,7 +30145,23 @@ function run() {
                 // tagによる管理がされている場合:
                 // ex.) Release Note: v2.0.2
                 // 前回のRelease NoteまでにマージされたPRを対象にする
-                targetPulls.push(...mergedPulls.slice(0, prevPullIndex));
+                const candidatePulls = mergedPulls.slice(0, prevPullIndex);
+                if (pathFilters.length > 0) {
+                    // Filter PRs by path changes using efficient batch fetching
+                    core.info(`Filtering ${candidatePulls.length} PRs by path changes...`);
+                    const pullNumbers = candidatePulls.map(pull => pull.number);
+                    const pullFilesMap = yield (0, pathFilter_1.getChangedFilesForPRsBatch)(octokit, context.repo, pullNumbers);
+                    const filteredPulls = candidatePulls.filter(pull => {
+                        const changedFiles = pullFilesMap[pull.number] || [];
+                        const matches = (0, pathFilter_1.matchesPathFilter)(changedFiles, pathFilters);
+                        return matches;
+                    });
+                    core.info(`Filtered down to ${filteredPulls.length} PRs`);
+                    targetPulls.push(...filteredPulls);
+                }
+                else {
+                    targetPulls.push(...candidatePulls);
+                }
             }
             else {
                 // ブランチによる管理がされている場合：
@@ -30153,7 +30177,22 @@ function run() {
                     const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: pull_number }));
                     return current.data;
                 })));
-                targetPulls.push(...filterdCommits);
+                if (pathFilters.length > 0) {
+                    // Filter PRs by path changes using efficient batch fetching
+                    core.info(`Filtering ${filterdCommits.length} PRs by path changes...`);
+                    const pullNumbers = filterdCommits.map(pull => pull.number);
+                    const pullFilesMap = yield (0, pathFilter_1.getChangedFilesForPRsBatch)(octokit, context.repo, pullNumbers);
+                    const pathFilteredPulls = filterdCommits.filter(pull => {
+                        const changedFiles = pullFilesMap[pull.number] || [];
+                        const matches = (0, pathFilter_1.matchesPathFilter)(changedFiles, pathFilters);
+                        return matches;
+                    });
+                    core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
+                    targetPulls.push(...pathFilteredPulls);
+                }
+                else {
+                    targetPulls.push(...filterdCommits);
+                }
             }
             const sections = (0, groupPullsBySemantic_1.groupPullsBySemantic)(targetPulls);
             yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: (0, mergeBody_1.mergeBody)(context.payload.pull_request.body, [
@@ -30284,6 +30323,110 @@ const parseTitle = (title) => {
     };
 };
 exports.parseTitle = parseTitle;
+
+
+/***/ }),
+
+/***/ 9626:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.matchesPathFilter = exports.getChangedFilesForPRsBatch = exports.getChangedFilesForPR = void 0;
+const getChangedFilesForPR = (octokit, repository, pull_number) => __awaiter(void 0, void 0, void 0, function* () {
+    const files = [];
+    let hasMorePages = true;
+    let page = 1;
+    while (hasMorePages) {
+        const data = yield octokit.rest.pulls.listFiles(Object.assign(Object.assign({}, repository), { pull_number,
+            page, per_page: 100 }));
+        files.push(...data.data.map(file => file.filename));
+        hasMorePages = data.data.length === 100;
+        page++;
+    }
+    return files;
+});
+exports.getChangedFilesForPR = getChangedFilesForPR;
+// More efficient batch fetching of changed files for multiple PRs using GraphQL
+const getChangedFilesForPRsBatch = (octokit, repository, pullNumbers) => __awaiter(void 0, void 0, void 0, function* () {
+    if (pullNumbers.length === 0) {
+        return {};
+    }
+    // GraphQL query to fetch multiple PRs with their files in a single request
+    const query = `
+    query($owner: String!, $repo: String!, ${pullNumbers.map((_, i) => `$pr${i}: Int!`).join(', ')}) {
+      repository(owner: $owner, name: $repo) {
+        ${pullNumbers.map((_, i) => `
+          pr${i}: pullRequest(number: $pr${i}) {
+            number
+            files(first: 100) {
+              nodes {
+                path
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        `).join('')}
+      }
+    }
+  `;
+    const variables = Object.assign({ owner: repository.owner, repo: repository.repo }, Object.fromEntries(pullNumbers.map((num, i) => [`pr${i}`, num])));
+    try {
+        const response = yield octokit.graphql(query, variables);
+        const result = {};
+        pullNumbers.forEach((pullNumber, i) => {
+            const prData = response.repository[`pr${i}`];
+            if (prData && prData.files && prData.files.nodes) {
+                result[pullNumber] = prData.files.nodes.map((file) => file.path);
+                // Note: This basic implementation only fetches first 100 files per PR
+                // In a production scenario, you might want to handle pagination for PRs with >100 files
+                if (prData.files.pageInfo.hasNextPage) {
+                    console.warn(`PR #${pullNumber} has more than 100 changed files. Only first 100 are considered.`);
+                }
+            }
+            else {
+                result[pullNumber] = [];
+            }
+        });
+        return result;
+    }
+    catch (error) {
+        // Fallback to individual REST API calls if GraphQL fails
+        console.warn('GraphQL batch request failed, falling back to individual requests:', error);
+        const result = {};
+        for (const pullNumber of pullNumbers) {
+            try {
+                result[pullNumber] = yield (0, exports.getChangedFilesForPR)(octokit, repository, pullNumber);
+            }
+            catch (err) {
+                console.warn(`Failed to get files for PR #${pullNumber}:`, err);
+                result[pullNumber] = [];
+            }
+        }
+        return result;
+    }
+});
+exports.getChangedFilesForPRsBatch = getChangedFilesForPRsBatch;
+const matchesPathFilter = (files, pathFilters) => {
+    if (pathFilters.length === 0) {
+        return true; // No filter specified, include all
+    }
+    return files.some(file => pathFilters.some(filter => file.startsWith(filter.trim())));
+};
+exports.matchesPathFilter = matchesPathFilter;
 
 
 /***/ }),
