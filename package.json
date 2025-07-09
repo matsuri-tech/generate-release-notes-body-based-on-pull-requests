@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "bundle": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "test": "jest",
-    "all": "npm run lint && npm run prepare && npm run test",
+    "all": "npm run lint && npm run bundle && npm run test",
     "typecheck": "tsc src/* --noEmit"
   },
   "author": "hrdtbs",
@@ -22,8 +22,8 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@vercel/ncc": "^0.38.3",
-    "eslint": "^9.29.0",
-    "jest": "^30.0.0",
+    "eslint": "^9.30.1",
+    "jest": "^30.0.4",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "5.8.3"

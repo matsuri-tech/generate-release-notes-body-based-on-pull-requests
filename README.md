@@ -29,21 +29,36 @@ jobs:
         # デフォルト：'Release Note'
         # この文字列から始まるタイトルでのみ生成する
         RELEASE_PREFIX: 'Release Note'
+        # 任意。
+        # パスフィルター：指定したパスの変更を含むPRのみを対象にする
+        # カンマ区切りで複数指定可能。monorepo構成で特定のパッケージのみのリリースノートを生成したい場合に有用
+        # 例: 'packages/core/,packages/utils/'
+        PATH_FILTER: ''
 ```
 
 ## やること（処理の流れ）
 
 1. 指定された形式のRelease Noteでのみ処理を走らせる。
 2. 以前投げられたRelease Noteまで、マージされたPRのタイトルを集める。
-3. 集まったPRのタイトルをconventional commitとしてパースする。
-4. パースされたタイトルを元にRelease Note用のBodyを生成する。
-5. 既にRelease NoteのBodyに何か記入されている場合、その下に生成されたBodyを挿入する。
-6. 再度生成した場合は、以前生成されたものを置換する。
+3. PATH_FILTERが指定されている場合、各PRの変更ファイルを取得し、指定されたパスにマッチするPRのみを対象にする。
+4. 集まったPRのタイトルをconventional commitとしてパースする。
+5. パースされたタイトルを元にRelease Note用のBodyを生成する。
+6. 既にRelease NoteのBodyに何か記入されている場合、その下に生成されたBodyを挿入する。
+7. 再度生成した場合は、以前生成されたものを置換する。
 
 ### 他にやること
 
 - 集まったPRのBodyから`BREAKING CHANGE`からはじめる行を収集し、Release NoteのBodyにBREAKING CHANGESとしてまとめる。
 - `chore` 以外のOthersにまとめられるprefixを使用したタイトルで、スコープが指定されていない場合、prefix名をスコープとして利用する。
+
+### パスフィルタ機能
+
+PATH_FILTERパラメータを使用することで、特定のパス内の変更を含むPRのみをリリースノートの対象にすることができます。これはmonorepo構成で特定のパッケージやライブラリのみのリリースノートを生成したい場合に有用です。
+
+- カンマ区切りで複数のパスパターンを指定可能
+- パスの前方一致で判定
+- 例: `packages/core/,packages/utils/` → core パッケージと utils パッケージの変更のみ対象
+- 未指定の場合は全てのPRが対象（従来の動作）
 
 
 ### conventional commitについて
