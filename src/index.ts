@@ -1,12 +1,16 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { parseTitle } from "./parseTitle";
-import { makeBody } from "./makeBody";
-import { mergeBody } from "./mergeBody";
-import { isValidTitle } from "./isValidTitle";
-import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants";
-import { groupPullsBySemantic } from "./groupPullsBySemantic";
-import { getChangedFilesForPR, getChangedFilesForPRsBatch, matchesPathFilter } from "./pathFilter";
+import { parseTitle } from "./parseTitle.js";
+import { makeBody } from "./makeBody.js";
+import { mergeBody } from "./mergeBody.js";
+import { isValidTitle } from "./isValidTitle.js";
+import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants.js";
+import { groupPullsBySemantic } from "./groupPullsBySemantic.js";
+import {
+  getChangedFilesForPR,
+  getChangedFilesForPRsBatch,
+  matchesPathFilter,
+} from "./pathFilter.js";
 
 const getAllCommits = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -14,7 +18,7 @@ const getAllCommits = async (
     owner: string;
     repo: string;
   },
-  pull_number: number
+  pull_number: number,
 ) => {
   const commits = [];
   let hasMorePages = true;
@@ -58,9 +62,11 @@ async function run() {
     const RELEASE_PREFIX = core.getInput("RELEASE_PREFIX");
     const RELEASE_LABEL = core.getInput("RELEASE_LABEL");
     const PATH_FILTER = core.getInput("PATH_FILTER");
-    
-    const pathFilters = PATH_FILTER 
-      ? PATH_FILTER.split(",").map(filter => filter.trim()).filter(Boolean)
+
+    const pathFilters = PATH_FILTER
+      ? PATH_FILTER.split(",")
+          .map((filter) => filter.trim())
+          .filter(Boolean)
       : [];
 
     if (pathFilters.length > 0) {
@@ -73,7 +79,7 @@ async function run() {
       }
 
       core.warning(
-        `This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`
+        `This title prefix does not match the specified release prefix "${RELEASE_PREFIX}".`,
       );
       return;
     }
@@ -113,20 +119,24 @@ async function run() {
       // ex.) Release Note: v2.0.2
       // 前回のRelease NoteまでにマージされたPRを対象にする
       const candidatePulls = mergedPulls.slice(0, prevPullIndex);
-      
+
       if (pathFilters.length > 0) {
         // Filter PRs by path changes using efficient batch fetching
         core.info(`Filtering ${candidatePulls.length} PRs by path changes...`);
-        const pullNumbers = candidatePulls.map(pull => pull.number);
-        const pullFilesMap = await getChangedFilesForPRsBatch(octokit, context.repo, pullNumbers);
-        
-        const filteredPulls = candidatePulls.filter(pull => {
+        const pullNumbers = candidatePulls.map((pull) => pull.number);
+        const pullFilesMap = await getChangedFilesForPRsBatch(
+          octokit,
+          context.repo,
+          pullNumbers,
+        );
+
+        const filteredPulls = candidatePulls.filter((pull) => {
           const changedFiles = pullFilesMap[pull.number] || [];
           const matches = matchesPathFilter(changedFiles, pathFilters);
-          
+
           return matches;
         });
-        
+
         core.info(`Filtered down to ${filteredPulls.length} PRs`);
         targetPulls.push(...filteredPulls);
       } else {
@@ -140,7 +150,7 @@ async function run() {
       const commits = await getAllCommits(
         octokit,
         context.repo,
-        current.data.number
+        current.data.number,
       );
 
       const filterdCommits = await Promise.all(
@@ -151,29 +161,33 @@ async function run() {
           .map(async (commit) => {
             const pull_number = parseInt(
               commit.commit.message.split("#")[1].split(" ")[0],
-              10
+              10,
             );
             const current = await octokit.rest.pulls.get({
               ...context.repo,
               pull_number: pull_number,
             });
             return current.data;
-          })
+          }),
       );
 
       if (pathFilters.length > 0) {
         // Filter PRs by path changes using efficient batch fetching
         core.info(`Filtering ${filterdCommits.length} PRs by path changes...`);
-        const pullNumbers = filterdCommits.map(pull => pull.number);
-        const pullFilesMap = await getChangedFilesForPRsBatch(octokit, context.repo, pullNumbers);
-        
-        const pathFilteredPulls = filterdCommits.filter(pull => {
+        const pullNumbers = filterdCommits.map((pull) => pull.number);
+        const pullFilesMap = await getChangedFilesForPRsBatch(
+          octokit,
+          context.repo,
+          pullNumbers,
+        );
+
+        const pathFilteredPulls = filterdCommits.filter((pull) => {
           const changedFiles = pullFilesMap[pull.number] || [];
           const matches = matchesPathFilter(changedFiles, pathFilters);
-          
+
           return matches;
         });
-        
+
         core.info(`Filtered down to ${pathFilteredPulls.length} PRs`);
         targetPulls.push(...pathFilteredPulls);
       } else {
@@ -197,7 +211,7 @@ async function run() {
           END_COMMENT_OUT,
         ]
           .filter(Boolean)
-          .join("\n\n")
+          .join("\n\n"),
       ),
     });
   } catch (error: any) {

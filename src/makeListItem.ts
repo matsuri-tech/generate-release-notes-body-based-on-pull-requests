@@ -1,4 +1,4 @@
-import { escapeHtmlTags } from "./escapeHtmlTags";
+import { escapeHtmlTags } from "./escapeHtmlTags.js";
 export const makeListItem = ({
   scope,
   description,

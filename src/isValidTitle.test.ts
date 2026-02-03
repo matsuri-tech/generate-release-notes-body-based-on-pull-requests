@@ -1,66 +1,66 @@
-import { isValidTitle } from "./isValidTitle";
-
+import { isValidTitle } from "./isValidTitle.js";
+import { test, expect } from "vitest";
 const data = [
   {
     input: "feat(scope): description",
-    output: true
+    output: true,
   },
   {
     input: "feat(scope):           description",
-    output: true
+    output: true,
   },
   {
     input: "feat(scope):                description",
-    output: true
+    output: true,
   },
   {
     input: "feat(scope_scope): description",
-    output: true
+    output: true,
   },
   {
     input: "feat(scope/scope): description",
-    output: true
+    output: true,
   },
   {
     input: "feat(scope-scope): description",
-    output: true
+    output: true,
   },
   {
     input: "feat: description",
-    output: true
+    output: true,
   },
   {
     input: "feat description",
-    output: false
+    output: false,
   },
   {
     input: "feat(): description",
-    output: false
+    output: false,
   },
   {
     input: "feat:description",
-    output: false
+    output: false,
   },
   {
     input: "foat: description",
-    output: false
+    output: false,
   },
   {
     input: "feat:",
-    output: false
+    output: false,
   },
   {
     input: ":description",
-    output: false
+    output: false,
   },
   {
     input: "chore: lighthouse ciを導入",
-    output: true
+    output: true,
   },
   {
     input: "build: remove next-offline",
-    output: true
-  }
+    output: true,
+  },
 ];
 
 data.forEach(({ input, output }) => {

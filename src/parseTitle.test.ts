@@ -1,5 +1,5 @@
-import { parseTitle, PARSE_TITLE_INVALID_FORMAT_ERROR } from "./parseTitle";
-
+import { parseTitle, PARSE_TITLE_INVALID_FORMAT_ERROR } from "./parseTitle.js";
+import { test, expect } from "vitest";
 const data = [
   {
     description: "basic",
