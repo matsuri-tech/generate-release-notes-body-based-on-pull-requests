@@ -1,4 +1,4 @@
-import { makeListItem } from "./makeListItem";
+import { makeListItem } from "./makeListItem.js";
 
 export const makeBody = (sections: Sections) => {
   const inner = Object.entries(sections)
@@ -8,11 +8,11 @@ export const makeBody = (sections: Sections) => {
         return null;
       } else {
         return [`## ${heading}`, contents.map(makeListItem).join("\n")].join(
-          "\n"
+          "\n",
         );
       }
     })
     .filter(Boolean)
     .join("\n\n");
-  return inner
+  return inner;
 };

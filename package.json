@@ -1,15 +1,16 @@
 {
   "name": "generate-release-notes-body-based-on-pull-requests",
   "version": "1.1.1",
+  "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   },
   "description": "Generate Release note's body based on pull requests",
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
     "bundle": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
-    "test": "jest",
+    "test": "npx vitest --coverage",
     "all": "npm run lint && npm run bundle && npm run test",
     "typecheck": "tsc --noEmit"
   },
@@ -17,16 +18,15 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^3.0.0",
-    "@actions/github": "^8.0.0"
+    "@actions/github": "^9.0.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/node": "25.2.0",
     "@vercel/ncc": "^0.38.4",
+    "@vitest/coverage-v8": "4.0.18",
     "eslint": "^9.39.2",
-    "jest": "^30.2.0",
-    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
   }
 }

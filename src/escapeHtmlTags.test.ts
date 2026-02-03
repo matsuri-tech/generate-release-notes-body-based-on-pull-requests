@@ -1,4 +1,5 @@
-import { escapeHtmlTags, escapeHtmlTagsReplacer } from "./escapeHtmlTags";
+import { escapeHtmlTags, escapeHtmlTagsReplacer } from "./escapeHtmlTags.js";
+import { test, expect } from "vitest";
 
 test("<", () => {
   expect(escapeHtmlTagsReplacer("<")).toBe("&lt;");

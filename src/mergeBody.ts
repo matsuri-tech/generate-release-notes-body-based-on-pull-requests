@@ -1,4 +1,4 @@
-import { CONTENT_REGEXP } from "./constants";
+import { CONTENT_REGEXP } from "./constants.js";
 
 export const mergeBody = (current: string = "", next: string = "") => {
   return current

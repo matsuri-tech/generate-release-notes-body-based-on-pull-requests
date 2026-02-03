@@ -1,5 +1,5 @@
-import { isValidTitle } from "./isValidTitle";
-import { parseTitle } from "./parseTitle";
+import { isValidTitle } from "./isValidTitle.js";
+import { parseTitle } from "./parseTitle.js";
 
 export const groupPullsBySemantic = (
   pulls: {
@@ -9,7 +9,7 @@ export const groupPullsBySemantic = (
     head: {
       ref: string;
     };
-  }[]
+  }[],
 ) => {
   const sections: Sections = {
     breakings: {
@@ -35,7 +35,7 @@ export const groupPullsBySemantic = (
       console.log(
         pull.title,
         ":",
-        "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts"
+        "This pull request is an invalid format. see https://github.com/matsuri-tech/generate-release-notes-body-based-on-pull-requests/blob/main/src/isValidTitle.ts",
       );
       return false;
     }

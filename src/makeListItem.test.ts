@@ -1,5 +1,5 @@
-import { makeListItem } from "./makeListItem";
-
+import { makeListItem } from "./makeListItem.js";
+import { test, expect } from "vitest";
 const data = [
   {
     description: "basic",

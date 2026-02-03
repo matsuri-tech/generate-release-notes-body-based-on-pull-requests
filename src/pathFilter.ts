@@ -1,12 +1,13 @@
 import * as github from "@actions/github";
+import type { GitHub } from "@actions/github/lib/utils";
 
 export const getChangedFilesForPR = async (
-  octokit: ReturnType<typeof github.getOctokit>,
+  octokit: InstanceType<typeof GitHub>,
   repository: {
     owner: string;
     repo: string;
   },
-  pull_number: number
+  pull_number: number,
 ): Promise<string[]> => {
   const files = [];
   let hasMorePages = true;
@@ -20,7 +21,7 @@ export const getChangedFilesForPR = async (
       per_page: 100,
     });
 
-    files.push(...data.data.map(file => file.filename));
+    files.push(...data.data.map((file) => file.filename));
 
     hasMorePages = data.data.length === 100;
     page++;
@@ -36,7 +37,7 @@ export const getChangedFilesForPRsBatch = async (
     owner: string;
     repo: string;
   },
-  pullNumbers: number[]
+  pullNumbers: number[],
 ): Promise<Record<number, string[]>> => {
   if (pullNumbers.length === 0) {
     return {};
@@ -44,9 +45,11 @@ export const getChangedFilesForPRsBatch = async (
 
   // GraphQL query to fetch multiple PRs with their files in a single request
   const query = `
-    query($owner: String!, $repo: String!, ${pullNumbers.map((_, i) => `$pr${i}: Int!`).join(', ')}) {
+    query($owner: String!, $repo: String!, ${pullNumbers.map((_, i) => `$pr${i}: Int!`).join(", ")}) {
       repository(owner: $owner, name: $repo) {
-        ${pullNumbers.map((_, i) => `
+        ${pullNumbers
+          .map(
+            (_, i) => `
           pr${i}: pullRequest(number: $pr${i}) {
             number
             files(first: 100) {
@@ -59,7 +62,9 @@ export const getChangedFilesForPRsBatch = async (
               }
             }
           }
-        `).join('')}
+        `,
+          )
+          .join("")}
       }
     }
   `;
@@ -67,7 +72,7 @@ export const getChangedFilesForPRsBatch = async (
   const variables = {
     owner: repository.owner,
     repo: repository.repo,
-    ...Object.fromEntries(pullNumbers.map((num, i) => [`pr${i}`, num]))
+    ...Object.fromEntries(pullNumbers.map((num, i) => [`pr${i}`, num])),
   };
 
   try {
@@ -78,11 +83,13 @@ export const getChangedFilesForPRsBatch = async (
       const prData = (response as any).repository[`pr${i}`];
       if (prData && prData.files && prData.files.nodes) {
         result[pullNumber] = prData.files.nodes.map((file: any) => file.path);
-        
+
         // Note: This basic implementation only fetches first 100 files per PR
         // In a production scenario, you might want to handle pagination for PRs with >100 files
         if (prData.files.pageInfo.hasNextPage) {
-          console.warn(`PR #${pullNumber} has more than 100 changed files. Only first 100 are considered.`);
+          console.warn(
+            `PR #${pullNumber} has more than 100 changed files. Only first 100 are considered.`,
+          );
         }
       } else {
         result[pullNumber] = [];
@@ -92,30 +99,38 @@ export const getChangedFilesForPRsBatch = async (
     return result;
   } catch (error) {
     // Fallback to individual REST API calls if GraphQL fails
-    console.warn('GraphQL batch request failed, falling back to individual requests:', error);
+    console.warn(
+      "GraphQL batch request failed, falling back to individual requests:",
+      error,
+    );
     const result: Record<number, string[]> = {};
-    
+
     for (const pullNumber of pullNumbers) {
       try {
-        result[pullNumber] = await getChangedFilesForPR(octokit, repository, pullNumber);
+        result[pullNumber] = await getChangedFilesForPR(
+          octokit,
+          repository,
+          pullNumber,
+        );
       } catch (err) {
         console.warn(`Failed to get files for PR #${pullNumber}:`, err);
         result[pullNumber] = [];
       }
     }
-    
+
     return result;
   }
 };
 
-export const matchesPathFilter = (files: string[], pathFilters: string[]): boolean => {
+export const matchesPathFilter = (
+  files: string[],
+  pathFilters: string[],
+): boolean => {
   if (pathFilters.length === 0) {
     return true; // No filter specified, include all
   }
 
-  return files.some(file => 
-    pathFilters.some(filter => 
-      file.startsWith(filter.trim())
-    )
+  return files.some((file) =>
+    pathFilters.some((filter) => file.startsWith(filter.trim())),
   );
 };
