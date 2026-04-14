@@ -28,6 +28,6 @@
     "eslint": "^10.2.0",
     "ts-node": "^10.9.2",
     "typescript": "6.0.2",
-    "vitest": "4.1.2"
+    "vitest": "4.1.4"
   }
 }
