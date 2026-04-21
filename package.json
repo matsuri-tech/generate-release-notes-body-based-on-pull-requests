@@ -27,7 +27,7 @@
     "@vitest/coverage-v8": "4.1.4",
     "eslint": "^10.2.1",
     "ts-node": "^10.9.2",
-    "typescript": "6.0.2",
+    "typescript": "6.0.3",
     "vitest": "4.1.4"
   }
 }
