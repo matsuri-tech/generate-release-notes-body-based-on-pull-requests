@@ -22,21 +22,31 @@ const cases: {
     output: ["foo"],
   },
   {
-    description: "heading pattern with bullet list",
-    input: "## BREAKING CHANGES\n- item 1\n- item 2",
-    output: ["- item 1\n- item 2"],
+    description: "single-line pattern with CRLF line endings",
+    input: "BREAKING CHANGE: foo\r\nrest",
+    output: ["foo"],
   },
   {
-    description: "heading pattern terminated by next ## heading",
+    description: "heading pattern with bullet list (dash)",
+    input: "## BREAKING CHANGES\n- item 1\n- item 2",
+    output: ["item 1", "item 2"],
+  },
+  {
+    description: "heading pattern with bullet list (asterisk)",
+    input: "## BREAKING CHANGES\n* item 1\n* item 2",
+    output: ["item 1", "item 2"],
+  },
+  {
+    description: "heading pattern with prose splits per line",
     input:
       "## BREAKING CHANGES\nSome prose\nacross lines\n\n## Summary\nrest",
-    output: ["Some prose\nacross lines"],
+    output: ["Some prose", "across lines"],
   },
   {
     description:
       "heading pattern does not terminate at ### (only ## or # same/higher level)",
     input: "## BREAKING CHANGES\n### 詳細\nfoo\n## Next",
-    output: ["### 詳細\nfoo"],
+    output: ["### 詳細", "foo"],
   },
   {
     description: "heading pattern terminated by next # heading",
@@ -52,6 +62,11 @@ const cases: {
     description: "heading pattern after leading whitespace/newlines",
     input: "\n\n## BREAKING CHANGES\ncontent",
     output: ["content"],
+  },
+  {
+    description: "heading pattern with CRLF line endings",
+    input: "## BREAKING CHANGES\r\n- item 1\r\n- item 2",
+    output: ["item 1", "item 2"],
   },
   {
     description: "BREAKING CHANGE appearing in the middle is NOT extracted",
