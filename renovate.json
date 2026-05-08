@@ -25,9 +25,14 @@
   },
   "packageRules": [
     {
-      "matchDepTypes": ["action"],
-      "pinDigests": true,
-      "matchPackageNames": ["!actions/{/,}**", "!matsuri-tech/{/,}**"]
+      "matchDepTypes": [
+        "action"
+      ],
+      "matchPackageNames": [
+        "actions/{/,}**",
+        "matsuri-tech/{/,}**"
+      ],
+      "pinDigests": false
     }
   ]
 }
