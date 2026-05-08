@@ -1,8 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "reviewers": [
-    "hrdtbs"
-  ],
+  "reviewers": ["hrdtbs"],
   "extends": [
     "config:recommended",
     ":configMigration",
@@ -25,13 +23,8 @@
   },
   "packageRules": [
     {
-      "matchDepTypes": [
-        "action"
-      ],
-      "matchPackageNames": [
-        "actions/{/,}**",
-        "matsuri-tech/{/,}**"
-      ],
+      "matchDepTypes": ["action"],
+      "matchPackageNames": ["actions/{/,}**", "matsuri-tech/{/,}**"],
       "pinDigests": false
     }
   ]
