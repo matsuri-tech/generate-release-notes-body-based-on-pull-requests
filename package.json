@@ -24,10 +24,10 @@
     "@eslint/js": "10.0.1",
     "@types/node": "25.9.1",
     "@vercel/ncc": "^0.38.4",
-    "@vitest/coverage-v8": "4.1.6",
+    "@vitest/coverage-v8": "4.1.7",
     "eslint": "^10.4.0",
     "ts-node": "^10.9.2",
     "typescript": "6.0.3",
-    "vitest": "4.1.6"
+    "vitest": "4.1.7"
   }
 }
