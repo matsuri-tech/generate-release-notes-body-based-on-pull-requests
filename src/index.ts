@@ -11,6 +11,7 @@ import {
   getChangedFilesForPRsBatch,
   matchesPathFilter,
 } from "./pathFilter.js";
+import { resolvePullNumber } from "./resolvePullNumber.js";
 
 const getAllCommits = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -50,14 +51,10 @@ async function run() {
     const context = github.context;
 
     const pullNumberInput = core.getInput("PULL_NUMBER");
-    const pull_number =
-      context.payload.pull_request?.number ??
-      (pullNumberInput ? parseInt(pullNumberInput, 10) : undefined);
-    if (pull_number === undefined || Number.isNaN(pull_number)) {
-      throw new Error(
-        "This action requires a pull_request event context or a valid PULL_NUMBER input.",
-      );
-    }
+    const pull_number = resolvePullNumber(
+      context.payload.pull_request?.number,
+      pullNumberInput,
+    );
 
     const current = await octokit.rest.pulls.get({
       ...context.repo,

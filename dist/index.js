@@ -36276,6 +36276,15 @@ const matchesPathFilter = (files, pathFilters) => {
     return files.some((file) => pathFilters.some((filter) => file.startsWith(filter.trim())));
 };
 
+;// CONCATENATED MODULE: ./src/resolvePullNumber.ts
+function resolvePullNumber(payloadPullNumber, pullNumberInput) {
+    const pull_number = payloadPullNumber !== null && payloadPullNumber !== void 0 ? payloadPullNumber : (pullNumberInput ? parseInt(pullNumberInput, 10) : undefined);
+    if (pull_number === undefined || Number.isNaN(pull_number)) {
+        throw new Error("This action requires a pull_request event context or a valid PULL_NUMBER input.");
+    }
+    return pull_number;
+}
+
 ;// CONCATENATED MODULE: ./src/index.ts
 var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -36286,6 +36295,7 @@ var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argu
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+
 
 
 
@@ -36310,16 +36320,13 @@ const getAllCommits = (octokit, repository, pull_number) => src_awaiter(void 0, 
 });
 function run() {
     return src_awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c;
+        var _a, _b;
         try {
             const GITHUB_TOKEN = getInput("GITHUB_TOKEN");
             const octokit = getOctokit(GITHUB_TOKEN);
             const context = github_context;
             const pullNumberInput = getInput("PULL_NUMBER");
-            const pull_number = (_b = (_a = context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number) !== null && _b !== void 0 ? _b : (pullNumberInput ? parseInt(pullNumberInput, 10) : undefined);
-            if (pull_number === undefined || Number.isNaN(pull_number)) {
-                throw new Error("This action requires a pull_request event context or a valid PULL_NUMBER input.");
-            }
+            const pull_number = resolvePullNumber((_a = context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number, pullNumberInput);
             const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number }));
             const currrentTitle = parseTitle(current.data.title);
             const RELEASE_PREFIX = getInput("RELEASE_PREFIX");
@@ -36412,7 +36419,7 @@ function run() {
                 }
             }
             const sections = groupPullsBySemantic(targetPulls);
-            yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number, body: mergeBody((_c = current.data.body) !== null && _c !== void 0 ? _c : "", [
+            yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number, body: mergeBody((_b = current.data.body) !== null && _b !== void 0 ? _b : "", [
                     START_COMMENT_OUT,
                     makeBody(sections),
                     prevPull
