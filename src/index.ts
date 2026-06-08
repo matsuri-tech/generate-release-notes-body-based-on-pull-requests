@@ -49,13 +49,19 @@ async function run() {
 
     const context = github.context;
 
-    if (context.payload.pull_request === undefined) {
-      throw new Error("This action only runs for pull request.");
+    const pullNumberInput = core.getInput("PULL_NUMBER");
+    const pull_number =
+      context.payload.pull_request?.number ??
+      (pullNumberInput ? parseInt(pullNumberInput, 10) : undefined);
+    if (pull_number === undefined || Number.isNaN(pull_number)) {
+      throw new Error(
+        "This action requires a pull_request event context or a valid PULL_NUMBER input.",
+      );
     }
 
     const current = await octokit.rest.pulls.get({
       ...context.repo,
-      pull_number: context.payload.pull_request.number,
+      pull_number,
     });
     const currrentTitle = parseTitle(current.data.title);
 
@@ -87,7 +93,7 @@ async function run() {
     try {
       await octokit.rest.issues.addLabels({
         ...context.repo,
-        issue_number: context.payload.pull_request.number,
+        issue_number: pull_number,
         labels: [RELEASE_LABEL],
       });
     } catch (error: any) {
@@ -199,9 +205,9 @@ async function run() {
 
     await octokit.rest.pulls.update({
       ...context.repo,
-      pull_number: context.payload.pull_request.number,
+      pull_number,
       body: mergeBody(
-        context.payload.pull_request.body,
+        current.data.body ?? "",
         [
           START_COMMENT_OUT,
           makeBody(sections),

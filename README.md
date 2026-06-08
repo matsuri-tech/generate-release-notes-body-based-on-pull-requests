@@ -34,6 +34,44 @@ jobs:
         # カンマ区切りで複数指定可能。monorepo構成で特定のパッケージのみのリリースノートを生成したい場合に有用
         # 例: 'packages/core/,packages/utils/'
         PATH_FILTER: ''
+        # 任意。
+        # pull_request イベント外（schedule, workflow_dispatch 等）で実行する場合に対象のPR番号を指定する
+        # 未指定の場合は context.payload.pull_request.number を使用する（従来どおり）
+        PULL_NUMBER: ''
+```
+
+### `workflow_dispatch` / `schedule` など pull_request 以外のコンテキストで使う例
+
+```yml
+## .github/workflows/create-deploy-pr.yml
+name: create-deploy-pr
+on:
+  schedule:
+    - cron: "0 4 * * 1-4"
+  workflow_dispatch:
+
+jobs:
+  generate-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create PR
+        id: create-pr
+        run: |
+          PR_NUMBER=$(gh pr create --base deploy --head main \
+            --title "Release Note: $(date '+%Y-%m-%d')" --body "" \
+            --json number --jq '.number')
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: matsuri-tech/generate-release-notes-body-based-on-pull-requests@v3
+        if: steps.create-pr.outputs.pr_number
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_PREFIX: 'Release Note'
+          PULL_NUMBER: ${{ steps.create-pr.outputs.pr_number }}
 ```
 
 ## やること（処理の流れ）

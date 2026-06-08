@@ -36310,14 +36310,17 @@ const getAllCommits = (octokit, repository, pull_number) => src_awaiter(void 0, 
 });
 function run() {
     return src_awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
         try {
             const GITHUB_TOKEN = getInput("GITHUB_TOKEN");
             const octokit = getOctokit(GITHUB_TOKEN);
             const context = github_context;
-            if (context.payload.pull_request === undefined) {
-                throw new Error("This action only runs for pull request.");
+            const pullNumberInput = getInput("PULL_NUMBER");
+            const pull_number = (_b = (_a = context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number) !== null && _b !== void 0 ? _b : (pullNumberInput ? parseInt(pullNumberInput, 10) : undefined);
+            if (pull_number === undefined || Number.isNaN(pull_number)) {
+                throw new Error("This action requires a pull_request event context or a valid PULL_NUMBER input.");
             }
-            const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number }));
+            const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number }));
             const currrentTitle = parseTitle(current.data.title);
             const RELEASE_PREFIX = getInput("RELEASE_PREFIX");
             const RELEASE_LABEL = getInput("RELEASE_LABEL");
@@ -36338,7 +36341,7 @@ function run() {
                 return;
             }
             try {
-                yield octokit.rest.issues.addLabels(Object.assign(Object.assign({}, context.repo), { issue_number: context.payload.pull_request.number, labels: [RELEASE_LABEL] }));
+                yield octokit.rest.issues.addLabels(Object.assign(Object.assign({}, context.repo), { issue_number: pull_number, labels: [RELEASE_LABEL] }));
             }
             catch (error) {
                 warning(`Failed to add release label: ${error.message}`);
@@ -36409,7 +36412,7 @@ function run() {
                 }
             }
             const sections = groupPullsBySemantic(targetPulls);
-            yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number: context.payload.pull_request.number, body: mergeBody(context.payload.pull_request.body, [
+            yield octokit.rest.pulls.update(Object.assign(Object.assign({}, context.repo), { pull_number, body: mergeBody((_c = current.data.body) !== null && _c !== void 0 ? _c : "", [
                     START_COMMENT_OUT,
                     makeBody(sections),
                     prevPull

@@ -13,6 +13,9 @@ inputs:
   PATH_FILTER:
     description: "Filter PRs by file path changes. Comma-separated list of path patterns. Only PRs that modify files matching these patterns will be included."
     required: false
+  PULL_NUMBER:
+    description: "PR number to generate release notes for. Use this when running outside of a pull_request event (e.g., workflow_dispatch or schedule). If omitted, the action uses context.payload.pull_request.number."
+    required: false
 runs:
   using: "node20"
   main: "dist/index.js"
