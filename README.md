@@ -34,6 +34,12 @@ jobs:
         # カンマ区切りで複数指定可能。monorepo構成で特定のパッケージのみのリリースノートを生成したい場合に有用
         # 例: 'packages/core/,packages/utils/'
         PATH_FILTER: ''
+        # 任意。
+        # デフォルト：'matsuri-ai-review[bot]'
+        # リリースPRを自動マージするactorのlogin名
+        # このactorによって自動マージされたリリースPRの一覧をリリースPRの最下部に記載する
+        # 空文字を指定するとこの機能を無効化できる
+        AUTO_MERGE_ACTOR: 'matsuri-ai-review[bot]'
 ```
 
 ## やること（処理の流れ）
@@ -60,6 +66,20 @@ PATH_FILTERパラメータを使用することで、特定のパス内の変更
 - 例: `packages/core/,packages/utils/` → core パッケージと utils パッケージの変更のみ対象
 - 未指定の場合は全てのPRが対象（従来の動作）
 
+
+### 自動リリースされたPR一覧
+
+AUTO_MERGE_ACTORパラメータで指定されたactor（デフォルトでは[matsuri-ai-review](https://github.com/apps/matsuri-ai-review)）によって自動マージされたリリースPRを、前回それ以外がマージしたリリースPRまで遡って抽出し、リリースPRのBodyの最下部に以下の形式で記載します。
+
+```
+## 自動リリースされたPR一覧
+
+- https://...
+- https://...
+```
+
+- 自動マージされたリリースPRが存在しない場合、このセクションは出力されない
+- 空文字を指定するとこの機能を無効化できる
 
 ### conventional commitについて
 

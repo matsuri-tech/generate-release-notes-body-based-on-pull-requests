@@ -36363,23 +36363,24 @@ function run() {
                 .sort((prev, next) => {
                 return Date.parse(next.merged_at) - Date.parse(prev.merged_at);
             });
-            const prevPullIndex = mergedPulls.findIndex((pull) => {
-                return pull.title.startsWith(RELEASE_PREFIX);
-            });
-            const prevPull = mergedPulls[prevPullIndex];
-            // 前回 AUTO_MERGE_ACTOR 以外がマージしたリリースPRまでの、
-            // AUTO_MERGE_ACTOR によって自動マージされたリリースPRを抽出する
-            const AUTO_MERGE_ACTOR = getInput("AUTO_MERGE_ACTOR") || "matsuri-ai-review[bot]";
-            const autoReleasedPullUrls = [];
             const releasePulls = mergedPulls.filter((pull) => {
                 return pull.title.startsWith(RELEASE_PREFIX);
             });
-            for (const releasePull of releasePulls) {
-                const { data } = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: releasePull.number }));
-                if (((_a = data.merged_by) === null || _a === void 0 ? void 0 : _a.login) !== AUTO_MERGE_ACTOR) {
-                    break;
+            const prevPull = releasePulls[0];
+            const prevPullIndex = prevPull ? mergedPulls.indexOf(prevPull) : -1;
+            // 前回 AUTO_MERGE_ACTOR 以外がマージしたリリースPRまでの、
+            // AUTO_MERGE_ACTOR によって自動マージされたリリースPRを抽出する
+            // 空文字が指定されている場合はこの機能を無効化する
+            const AUTO_MERGE_ACTOR = getInput("AUTO_MERGE_ACTOR");
+            const autoReleasedPullUrls = [];
+            if (AUTO_MERGE_ACTOR) {
+                for (const releasePull of releasePulls) {
+                    const { data } = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: releasePull.number }));
+                    if (((_a = data.merged_by) === null || _a === void 0 ? void 0 : _a.login) !== AUTO_MERGE_ACTOR) {
+                        break;
+                    }
+                    autoReleasedPullUrls.push(data.html_url);
                 }
-                autoReleasedPullUrls.push(data.html_url);
             }
             const targetPulls = [];
             if (currrentTitle.description.startsWith("v")) {
