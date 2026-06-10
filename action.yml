@@ -10,6 +10,9 @@ inputs:
   RELEASE_LABEL:
     description: "Label to be added to release pull requests."
     default: "release"
+  AUTO_MERGE_ACTOR:
+    description: "Login of the actor that auto-merges release pull requests. Release PRs merged by this actor since the last manually merged release PR are listed at the bottom of the release notes."
+    default: "matsuri-ai-review[bot]"
   PATH_FILTER:
     description: "Filter PRs by file path changes. Comma-separated list of path patterns. Only PRs that modify files matching these patterns will be included."
     required: false
