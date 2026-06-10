@@ -36361,7 +36361,7 @@ function run() {
                 return !!pull.merged_at;
             })
                 .sort((prev, next) => {
-                return Number(next.merged_at) - Number(prev.merged_at);
+                return Date.parse(next.merged_at) - Date.parse(prev.merged_at);
             });
             const prevPullIndex = mergedPulls.findIndex((pull) => {
                 return pull.title.startsWith(RELEASE_PREFIX);
