@@ -6,6 +6,7 @@ import { mergeBody } from "./mergeBody.js";
 import { isValidTitle } from "./isValidTitle.js";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants.js";
 import { groupPullsBySemantic } from "./groupPullsBySemantic.js";
+import { makeAutoReleasedSection } from "./makeAutoReleasedSection.js";
 import {
   getChangedFilesForPR,
   getChangedFilesForPRsBatch,
@@ -112,6 +113,25 @@ async function run() {
     });
     const prevPull = mergedPulls[prevPullIndex];
 
+    // 前回 AUTO_MERGE_ACTOR 以外がマージしたリリースPRまでの、
+    // AUTO_MERGE_ACTOR によって自動マージされたリリースPRを抽出する
+    const AUTO_MERGE_ACTOR =
+      core.getInput("AUTO_MERGE_ACTOR") || "matsuri-ai-review[bot]";
+    const autoReleasedPullUrls: string[] = [];
+    const releasePulls = mergedPulls.filter((pull) => {
+      return pull.title.startsWith(RELEASE_PREFIX);
+    });
+    for (const releasePull of releasePulls) {
+      const { data } = await octokit.rest.pulls.get({
+        ...context.repo,
+        pull_number: releasePull.number,
+      });
+      if (data.merged_by?.login !== AUTO_MERGE_ACTOR) {
+        break;
+      }
+      autoReleasedPullUrls.push(data.html_url);
+    }
+
     const targetPulls = [];
 
     if (currrentTitle.description.startsWith("v")) {
@@ -208,6 +228,7 @@ async function run() {
           prevPull
             ? `**Prev**: [${prevPull.title}](${prevPull.html_url})`
             : null,
+          makeAutoReleasedSection(autoReleasedPullUrls),
           END_COMMENT_OUT,
         ]
           .filter(Boolean)
