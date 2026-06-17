@@ -36193,34 +36193,6 @@ const makeAutoReleasedSection = (urls) => {
     ].join("\n\n");
 };
 
-;// CONCATENATED MODULE: ./src/extractPullNumber.ts
-/**
- * コミットメッセージからPR番号を抽出する。
- *
- * GitHubのマージ方式によってコミットメッセージの形式が異なるため、
- * 代表的な3つの形式に対応する。
- *
- * - merge commit:   "Merge pull request #123 from owner/branch"
- * - squash merge:   "<subject> (#123)"
- * - rebase merge:   "<subject> (#123)"  (squashと同じ形式)
- *
- * 抽出できない場合は undefined を返す。
- */
-const extractPullNumber = (message) => {
-    const firstLine = message.split("\n")[0];
-    // merge commit: "Merge pull request #123 from ..."
-    const mergeMatch = firstLine.match(/^Merge pull request #(\d+)\b/);
-    if (mergeMatch) {
-        return parseInt(mergeMatch[1], 10);
-    }
-    // squash / rebase merge: 件名末尾の "(#123)"
-    const squashMatch = firstLine.match(/\(#(\d+)\)\s*$/);
-    if (squashMatch) {
-        return parseInt(squashMatch[1], 10);
-    }
-    return undefined;
-};
-
 ;// CONCATENATED MODULE: ./src/pathFilter.ts
 var pathFilter_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -36335,7 +36307,6 @@ var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argu
 
 
 
-
 const getAllCommits = (octokit, repository, pull_number) => src_awaiter(void 0, void 0, void 0, function* () {
     const commits = [];
     let hasMorePages = true;
@@ -36439,16 +36410,20 @@ function run() {
                 // ex.) Release Note: 2025-02-01
                 // 今回のRelease Noteに含まれてるコミットから対象となるPRを特定する
                 const commits = yield getAllCommits(octokit, context.repo, current.data.number);
-                // merge commit / squash merge / rebase merge いずれの形式でも
-                // コミットメッセージからPR番号を抽出する。
-                // 同一PRが複数コミットから抽出されうるため番号で重複排除する。
-                const pullNumbers = Array.from(new Set(commits
-                    .map((commit) => extractPullNumber(commit.commit.message))
-                    .filter((pull_number) => pull_number !== undefined)));
-                const filterdCommits = yield Promise.all(pullNumbers.map((pull_number) => src_awaiter(this, void 0, void 0, function* () {
-                    const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number }));
-                    return current.data;
+                const associatedPullsPerCommit = yield Promise.all(commits.map((commit) => src_awaiter(this, void 0, void 0, function* () {
+                    const { data } = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit(Object.assign(Object.assign({}, context.repo), { commit_sha: commit.sha }));
+                    return data;
                 })));
+                const pullsByNumber = new Map();
+                for (const associatedPulls of associatedPullsPerCommit) {
+                    for (const pull of associatedPulls) {
+                        // リリースノートにはマージ済みPRのみを対象とする
+                        if (pull.merged_at && !pullsByNumber.has(pull.number)) {
+                            pullsByNumber.set(pull.number, pull);
+                        }
+                    }
+                }
+                const filterdCommits = Array.from(pullsByNumber.values());
                 if (pathFilters.length > 0) {
                     // Filter PRs by path changes using efficient batch fetching
                     info(`Filtering ${filterdCommits.length} PRs by path changes...`);

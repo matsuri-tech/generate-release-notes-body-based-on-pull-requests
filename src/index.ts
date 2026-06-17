@@ -7,7 +7,6 @@ import { isValidTitle } from "./isValidTitle.js";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants.js";
 import { groupPullsBySemantic } from "./groupPullsBySemantic.js";
 import { makeAutoReleasedSection } from "./makeAutoReleasedSection.js";
-import { extractPullNumber } from "./extractPullNumber.js";
 import {
   getChangedFilesForPR,
   getChangedFilesForPRsBatch,
@@ -174,26 +173,39 @@ async function run() {
         current.data.number,
       );
 
-      // merge commit / squash merge / rebase merge いずれの形式でも
-      // コミットメッセージからPR番号を抽出する。
-      // 同一PRが複数コミットから抽出されうるため番号で重複排除する。
-      const pullNumbers = Array.from(
-        new Set(
-          commits
-            .map((commit) => extractPullNumber(commit.commit.message))
-            .filter((pull_number) => pull_number !== undefined),
-        ),
-      );
+      // 各コミットが属するPRをGitHub APIで解決する。
+      // コミットメッセージを解析しないため merge / squash / rebase の
+      // いずれの形式でも正しく取得でき、メッセージ中のissue参照
+      // (例: "fix: ... (#123)" の #123 がissueの場合)を誤ってPRとして
+      // 拾うこともない。1つのPRは複数コミットに紐づくため番号で重複排除する。
+      type AssociatedPull = Awaited<
+        ReturnType<
+          typeof octokit.rest.repos.listPullRequestsAssociatedWithCommit
+        >
+      >["data"][number];
 
-      const filterdCommits = await Promise.all(
-        pullNumbers.map(async (pull_number) => {
-          const current = await octokit.rest.pulls.get({
-            ...context.repo,
-            pull_number,
-          });
-          return current.data;
+      const associatedPullsPerCommit = await Promise.all(
+        commits.map(async (commit) => {
+          const { data } =
+            await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+              ...context.repo,
+              commit_sha: commit.sha,
+            });
+          return data;
         }),
       );
+
+      const pullsByNumber = new Map<number, AssociatedPull>();
+      for (const associatedPulls of associatedPullsPerCommit) {
+        for (const pull of associatedPulls) {
+          // リリースノートにはマージ済みPRのみを対象とする
+          if (pull.merged_at && !pullsByNumber.has(pull.number)) {
+            pullsByNumber.set(pull.number, pull);
+          }
+        }
+      }
+
+      const filterdCommits = Array.from(pullsByNumber.values());
 
       if (pathFilters.length > 0) {
         // Filter PRs by path changes using efficient batch fetching
