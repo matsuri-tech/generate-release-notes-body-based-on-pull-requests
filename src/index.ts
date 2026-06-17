@@ -19,7 +19,7 @@ const getAllCommits = async (
     owner: string;
     repo: string;
   },
-  pull_number: number,
+  pullNumber: number,
 ) => {
   const commits = [];
   let hasMorePages = true;
@@ -28,7 +28,7 @@ const getAllCommits = async (
   while (hasMorePages) {
     const data = await octokit.rest.pulls.listCommits({
       ...repository,
-      pull_number,
+      pull_number: pullNumber,
       page,
       per_page: 100,
     });

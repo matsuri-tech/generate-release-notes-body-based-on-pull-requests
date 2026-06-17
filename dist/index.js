@@ -36307,13 +36307,12 @@ var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argu
 
 
 
-const getAllCommits = (octokit, repository, pull_number) => src_awaiter(void 0, void 0, void 0, function* () {
+const getAllCommits = (octokit, repository, pullNumber) => src_awaiter(void 0, void 0, void 0, function* () {
     const commits = [];
     let hasMorePages = true;
     let page = 1;
     while (hasMorePages) {
-        const data = yield octokit.rest.pulls.listCommits(Object.assign(Object.assign({}, repository), { pull_number,
-            page, per_page: 100 }));
+        const data = yield octokit.rest.pulls.listCommits(Object.assign(Object.assign({}, repository), { pull_number: pullNumber, page, per_page: 100 }));
         commits.push(...data.data);
         hasMorePages = data.data.length === 100;
         page++;
