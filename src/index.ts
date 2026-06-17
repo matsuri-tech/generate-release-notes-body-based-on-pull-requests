@@ -7,6 +7,7 @@ import { isValidTitle } from "./isValidTitle.js";
 import { END_COMMENT_OUT, START_COMMENT_OUT } from "./constants.js";
 import { groupPullsBySemantic } from "./groupPullsBySemantic.js";
 import { makeAutoReleasedSection } from "./makeAutoReleasedSection.js";
+import { extractPullNumber } from "./extractPullNumber.js";
 import {
   getChangedFilesForPR,
   getChangedFilesForPRsBatch,
@@ -173,22 +174,25 @@ async function run() {
         current.data.number,
       );
 
+      // merge commit / squash merge / rebase merge いずれの形式でも
+      // コミットメッセージからPR番号を抽出する。
+      // 同一PRが複数コミットから抽出されうるため番号で重複排除する。
+      const pullNumbers = Array.from(
+        new Set(
+          commits
+            .map((commit) => extractPullNumber(commit.commit.message))
+            .filter((pull_number) => pull_number !== undefined),
+        ),
+      );
+
       const filterdCommits = await Promise.all(
-        commits
-          .filter((commit) => {
-            return commit.commit.message.startsWith("Merge pull request");
-          })
-          .map(async (commit) => {
-            const pull_number = parseInt(
-              commit.commit.message.split("#")[1].split(" ")[0],
-              10,
-            );
-            const current = await octokit.rest.pulls.get({
-              ...context.repo,
-              pull_number: pull_number,
-            });
-            return current.data;
-          }),
+        pullNumbers.map(async (pull_number) => {
+          const current = await octokit.rest.pulls.get({
+            ...context.repo,
+            pull_number,
+          });
+          return current.data;
+        }),
       );
 
       if (pathFilters.length > 0) {
