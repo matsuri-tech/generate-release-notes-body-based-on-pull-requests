@@ -19,7 +19,7 @@ const getAllCommits = async (
     owner: string;
     repo: string;
   },
-  pull_number: number,
+  pullNumber: number,
 ) => {
   const commits = [];
   let hasMorePages = true;
@@ -28,7 +28,7 @@ const getAllCommits = async (
   while (hasMorePages) {
     const data = await octokit.rest.pulls.listCommits({
       ...repository,
-      pull_number,
+      pull_number: pullNumber,
       page,
       per_page: 100,
     });
@@ -173,23 +173,39 @@ async function run() {
         current.data.number,
       );
 
-      const filterdCommits = await Promise.all(
-        commits
-          .filter((commit) => {
-            return commit.commit.message.startsWith("Merge pull request");
-          })
-          .map(async (commit) => {
-            const pull_number = parseInt(
-              commit.commit.message.split("#")[1].split(" ")[0],
-              10,
-            );
-            const current = await octokit.rest.pulls.get({
+      // 各コミットが属するPRをGitHub APIで解決する。
+      // コミットメッセージを解析しないため merge / squash / rebase の
+      // いずれの形式でも正しく取得でき、メッセージ中のissue参照
+      // (例: "fix: ... (#123)" の #123 がissueの場合)を誤ってPRとして
+      // 拾うこともない。1つのPRは複数コミットに紐づくため番号で重複排除する。
+      type AssociatedPull = Awaited<
+        ReturnType<
+          typeof octokit.rest.repos.listPullRequestsAssociatedWithCommit
+        >
+      >["data"][number];
+
+      const associatedPullsPerCommit = await Promise.all(
+        commits.map(async (commit) => {
+          const { data } =
+            await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
               ...context.repo,
-              pull_number: pull_number,
+              commit_sha: commit.sha,
             });
-            return current.data;
-          }),
+          return data;
+        }),
       );
+
+      const pullsByNumber = new Map<number, AssociatedPull>();
+      for (const associatedPulls of associatedPullsPerCommit) {
+        for (const pull of associatedPulls) {
+          // リリースノートにはマージ済みPRのみを対象とする
+          if (pull.merged_at && !pullsByNumber.has(pull.number)) {
+            pullsByNumber.set(pull.number, pull);
+          }
+        }
+      }
+
+      const filterdCommits = Array.from(pullsByNumber.values());
 
       if (pathFilters.length > 0) {
         // Filter PRs by path changes using efficient batch fetching

@@ -36307,13 +36307,12 @@ var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argu
 
 
 
-const getAllCommits = (octokit, repository, pull_number) => src_awaiter(void 0, void 0, void 0, function* () {
+const getAllCommits = (octokit, repository, pullNumber) => src_awaiter(void 0, void 0, void 0, function* () {
     const commits = [];
     let hasMorePages = true;
     let page = 1;
     while (hasMorePages) {
-        const data = yield octokit.rest.pulls.listCommits(Object.assign(Object.assign({}, repository), { pull_number,
-            page, per_page: 100 }));
+        const data = yield octokit.rest.pulls.listCommits(Object.assign(Object.assign({}, repository), { pull_number: pullNumber, page, per_page: 100 }));
         commits.push(...data.data);
         hasMorePages = data.data.length === 100;
         page++;
@@ -36410,15 +36409,20 @@ function run() {
                 // ex.) Release Note: 2025-02-01
                 // 今回のRelease Noteに含まれてるコミットから対象となるPRを特定する
                 const commits = yield getAllCommits(octokit, context.repo, current.data.number);
-                const filterdCommits = yield Promise.all(commits
-                    .filter((commit) => {
-                    return commit.commit.message.startsWith("Merge pull request");
-                })
-                    .map((commit) => src_awaiter(this, void 0, void 0, function* () {
-                    const pull_number = parseInt(commit.commit.message.split("#")[1].split(" ")[0], 10);
-                    const current = yield octokit.rest.pulls.get(Object.assign(Object.assign({}, context.repo), { pull_number: pull_number }));
-                    return current.data;
+                const associatedPullsPerCommit = yield Promise.all(commits.map((commit) => src_awaiter(this, void 0, void 0, function* () {
+                    const { data } = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit(Object.assign(Object.assign({}, context.repo), { commit_sha: commit.sha }));
+                    return data;
                 })));
+                const pullsByNumber = new Map();
+                for (const associatedPulls of associatedPullsPerCommit) {
+                    for (const pull of associatedPulls) {
+                        // リリースノートにはマージ済みPRのみを対象とする
+                        if (pull.merged_at && !pullsByNumber.has(pull.number)) {
+                            pullsByNumber.set(pull.number, pull);
+                        }
+                    }
+                }
+                const filterdCommits = Array.from(pullsByNumber.values());
                 if (pathFilters.length > 0) {
                     // Filter PRs by path changes using efficient batch fetching
                     info(`Filtering ${filterdCommits.length} PRs by path changes...`);
