@@ -12,6 +12,10 @@ import {
   getChangedFilesForPRsBatch,
   matchesPathFilter,
 } from "./pathFilter.js";
+import {
+  getAssociatedPullsForCommitsBatch,
+  type AssociatedPull,
+} from "./getAssociatedPullsForCommitsBatch.js";
 
 const getAllCommits = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -178,30 +182,19 @@ async function run() {
       // いずれの形式でも正しく取得でき、メッセージ中のissue参照
       // (例: "fix: ... (#123)" の #123 がissueの場合)を誤ってPRとして
       // 拾うこともない。1つのPRは複数コミットに紐づくため番号で重複排除する。
-      type AssociatedPull = Awaited<
-        ReturnType<
-          typeof octokit.rest.repos.listPullRequestsAssociatedWithCommit
-        >
-      >["data"][number];
-
-      const associatedPullsPerCommit = await Promise.all(
-        commits.map(async (commit) => {
-          const { data } =
-            await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-              ...context.repo,
-              commit_sha: commit.sha,
-            });
-          return data;
-        }),
+      // コミット数が多いPRでsecondary rate limitに触れないよう、
+      // GraphQLで複数コミットを1リクエストに束ねて解決する。
+      const associatedPulls = await getAssociatedPullsForCommitsBatch(
+        octokit,
+        context.repo,
+        commits.map((commit) => commit.sha),
       );
 
       const pullsByNumber = new Map<number, AssociatedPull>();
-      for (const associatedPulls of associatedPullsPerCommit) {
-        for (const pull of associatedPulls) {
-          // リリースノートにはマージ済みPRのみを対象とする
-          if (pull.merged_at && !pullsByNumber.has(pull.number)) {
-            pullsByNumber.set(pull.number, pull);
-          }
+      for (const pull of associatedPulls) {
+        // リリースノートにはマージ済みPRのみを対象とする
+        if (pull.merged_at && !pullsByNumber.has(pull.number)) {
+          pullsByNumber.set(pull.number, pull);
         }
       }
 
