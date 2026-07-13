@@ -36365,7 +36365,10 @@ const getAssociatedPullsByRest = (octokit, repository, commitShas) => getAssocia
     const pulls = [];
     // 並列で投げるとsecondary rate limitに触れるため直列で呼び出す
     for (const sha of commitShas) {
-        const { data } = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit(Object.assign(Object.assign({}, repository), { commit_sha: sha }));
+        const { data } = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit(Object.assign(Object.assign({}, repository), { commit_sha: sha, 
+            // GraphQL経路の associatedPullRequests(first: PULLS_PER_COMMIT) と
+            // 結果件数の上限を揃え、経路によって挙動が変わらないようにする
+            per_page: PULLS_PER_COMMIT }));
         for (const pull of data) {
             pulls.push({
                 number: pull.number,

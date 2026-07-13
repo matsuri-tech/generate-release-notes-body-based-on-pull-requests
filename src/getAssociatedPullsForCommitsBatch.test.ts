@@ -220,6 +220,14 @@ describe("getAssociatedPullsForCommitsBatch", () => {
     expect(
       mockOctokit.rest.repos.listPullRequestsAssociatedWithCommit,
     ).toHaveBeenCalledTimes(2);
+    expect(
+      mockOctokit.rest.repos.listPullRequestsAssociatedWithCommit,
+    ).toHaveBeenCalledWith({
+      owner: "test-owner",
+      repo: "test-repo",
+      commit_sha: "sha0",
+      per_page: 10,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       "GraphQL batch request failed, falling back to individual requests:",
       expect.any(Error),
