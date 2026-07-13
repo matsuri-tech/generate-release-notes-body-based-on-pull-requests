@@ -36287,6 +36287,117 @@ const matchesPathFilter = (files, pathFilters) => {
     return files.some((file) => pathFilters.some((filter) => file.startsWith(filter.trim())));
 };
 
+;// CONCATENATED MODULE: ./src/getAssociatedPullsForCommitsBatch.ts
+var getAssociatedPullsForCommitsBatch_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+// GitHubのsecondary rate limit（同時リクエスト上限100）を避けるため、
+// コミットごとのREST呼び出しではなくGraphQLで複数コミットを1クエリに束ねる
+const CHUNK_SIZE = 50;
+// 1コミットに紐づくPRは通常1件（+ リリースPR自身）なので10件で十分
+const PULLS_PER_COMMIT = 10;
+const chunk = (items, size) => {
+    const chunks = [];
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+};
+const getAssociatedPullsByGraphQL = (octokit, repository, commitShas) => getAssociatedPullsForCommitsBatch_awaiter(void 0, void 0, void 0, function* () {
+    const query = `
+    query($owner: String!, $repo: String!, ${commitShas.map((_, i) => `$sha${i}: GitObjectID!`).join(", ")}) {
+      repository(owner: $owner, name: $repo) {
+        ${commitShas
+        .map((_, i) => `
+          commit${i}: object(oid: $sha${i}) {
+            ... on Commit {
+              associatedPullRequests(first: ${PULLS_PER_COMMIT}) {
+                nodes {
+                  number
+                  title
+                  body
+                  url
+                  mergedAt
+                  headRefName
+                }
+              }
+            }
+          }
+        `)
+        .join("")}
+      }
+    }
+  `;
+    const variables = Object.assign({ owner: repository.owner, repo: repository.repo }, Object.fromEntries(commitShas.map((sha, i) => [`sha${i}`, sha])));
+    const response = yield octokit.graphql(query, variables);
+    const pulls = [];
+    commitShas.forEach((_, i) => {
+        var _a, _b;
+        const nodes = (_b = (_a = response.repository[`commit${i}`]) === null || _a === void 0 ? void 0 : _a.associatedPullRequests) === null || _b === void 0 ? void 0 : _b.nodes;
+        if (!nodes) {
+            return;
+        }
+        for (const node of nodes) {
+            if (!node) {
+                continue;
+            }
+            pulls.push({
+                number: node.number,
+                title: node.title,
+                body: node.body,
+                html_url: node.url,
+                merged_at: node.mergedAt,
+                head: {
+                    ref: node.headRefName,
+                },
+            });
+        }
+    });
+    return pulls;
+});
+const getAssociatedPullsByRest = (octokit, repository, commitShas) => getAssociatedPullsForCommitsBatch_awaiter(void 0, void 0, void 0, function* () {
+    const pulls = [];
+    // 並列で投げるとsecondary rate limitに触れるため直列で呼び出す
+    for (const sha of commitShas) {
+        const { data } = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit(Object.assign(Object.assign({}, repository), { commit_sha: sha }));
+        for (const pull of data) {
+            pulls.push({
+                number: pull.number,
+                title: pull.title,
+                body: pull.body,
+                html_url: pull.html_url,
+                merged_at: pull.merged_at,
+                head: {
+                    ref: pull.head.ref,
+                },
+            });
+        }
+    }
+    return pulls;
+});
+// 各コミットに紐づくPRをGraphQLでまとめて解決する。
+// 戻り値は全コミット分をflattenしたもので、重複・未マージPRを含む。
+const getAssociatedPullsForCommitsBatch = (octokit, repository, commitShas) => getAssociatedPullsForCommitsBatch_awaiter(void 0, void 0, void 0, function* () {
+    const pulls = [];
+    for (const shas of chunk(commitShas, CHUNK_SIZE)) {
+        try {
+            pulls.push(...(yield getAssociatedPullsByGraphQL(octokit, repository, shas)));
+        }
+        catch (error) {
+            // Fallback to individual REST API calls if GraphQL fails
+            console.warn("GraphQL batch request failed, falling back to individual requests:", error);
+            pulls.push(...(yield getAssociatedPullsByRest(octokit, repository, shas)));
+        }
+    }
+    return pulls;
+});
+
 ;// CONCATENATED MODULE: ./src/index.ts
 var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -36297,6 +36408,7 @@ var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argu
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+
 
 
 
@@ -36409,17 +36521,19 @@ function run() {
                 // ex.) Release Note: 2025-02-01
                 // 今回のRelease Noteに含まれてるコミットから対象となるPRを特定する
                 const commits = yield getAllCommits(octokit, context.repo, current.data.number);
-                const associatedPullsPerCommit = yield Promise.all(commits.map((commit) => src_awaiter(this, void 0, void 0, function* () {
-                    const { data } = yield octokit.rest.repos.listPullRequestsAssociatedWithCommit(Object.assign(Object.assign({}, context.repo), { commit_sha: commit.sha }));
-                    return data;
-                })));
+                // 各コミットが属するPRをGitHub APIで解決する。
+                // コミットメッセージを解析しないため merge / squash / rebase の
+                // いずれの形式でも正しく取得でき、メッセージ中のissue参照
+                // (例: "fix: ... (#123)" の #123 がissueの場合)を誤ってPRとして
+                // 拾うこともない。1つのPRは複数コミットに紐づくため番号で重複排除する。
+                // コミット数が多いPRでsecondary rate limitに触れないよう、
+                // GraphQLで複数コミットを1リクエストに束ねて解決する。
+                const associatedPulls = yield getAssociatedPullsForCommitsBatch(octokit, context.repo, commits.map((commit) => commit.sha));
                 const pullsByNumber = new Map();
-                for (const associatedPulls of associatedPullsPerCommit) {
-                    for (const pull of associatedPulls) {
-                        // リリースノートにはマージ済みPRのみを対象とする
-                        if (pull.merged_at && !pullsByNumber.has(pull.number)) {
-                            pullsByNumber.set(pull.number, pull);
-                        }
+                for (const pull of associatedPulls) {
+                    // リリースノートにはマージ済みPRのみを対象とする
+                    if (pull.merged_at && !pullsByNumber.has(pull.number)) {
+                        pullsByNumber.set(pull.number, pull);
                     }
                 }
                 const filterdCommits = Array.from(pullsByNumber.values());
