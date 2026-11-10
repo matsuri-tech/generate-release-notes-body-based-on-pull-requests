@@ -23,7 +23,7 @@
   },
   "packageRules": [
     {
-      "matchDepTypes": ["action"],
+      "matchDepTypes": ["action", "workflow"],
       "matchPackageNames": ["actions/{/,}**", "matsuri-tech/{/,}**"],
       "pinDigests": false
     }
